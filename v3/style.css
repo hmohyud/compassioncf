@@ -53,7 +53,7 @@ a { color: inherit; }
 .burger[aria-expanded="true"] span:nth-child(3) { transform: translateY(-5px) rotate(-45deg); }
 
 /* ---------- hero ---------- */
-.hero { position: relative; overflow: hidden; padding-top: 118px; text-align: center;
+.hero { position: relative; overflow: hidden; padding: 118px 0 64px; text-align: center;
   background: radial-gradient(ellipse 70% 50% at 50% 100%, #fff3c4 0%, rgba(255,243,196,0) 70%), linear-gradient(180deg, #8fd0ff 0%, var(--sky) 40%, var(--sky-2) 75%, #fff8e6 100%); }
 .clouds span { position: absolute; border-radius: 999px; background: #fff; filter: blur(2px); opacity: .85; animation: float 26s ease-in-out infinite alternate; }
 .clouds span::before, .clouds span::after { content: ''; position: absolute; background: #fff; border-radius: 50%; }
@@ -76,7 +76,7 @@ a { color: inherit; }
 .lede { font-size: clamp(17px, 1.4vw, 19px); color: var(--muted); max-width: 38em; margin: 0 auto 26px; }
 .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 
-.globe-stage { position: relative; width: min(760px, 94vw); margin: 0 auto -22%; z-index: 2; --g-glow: rgba(255, 220, 120, .45); --g-tip-bg: rgba(15, 38, 72, .82); }
+.globe-stage { position: relative; width: min(680px, 92vw); margin: 8px auto 0; z-index: 2; --g-glow: rgba(255, 220, 120, .45); --g-tip-bg: rgba(15, 38, 72, .82); }
 .sunburst { position: absolute; inset: -30%; border-radius: 50%; pointer-events: none;
   background: repeating-conic-gradient(from 0deg, rgba(255,214,90,.22) 0deg 6deg, transparent 6deg 18deg);
   -webkit-mask: radial-gradient(circle, #000 25%, transparent 65%); mask: radial-gradient(circle, #000 25%, transparent 65%); animation: spin 90s linear infinite; }
@@ -86,9 +86,9 @@ a { color: inherit; }
 .chip b { font: 800 28px/1 var(--display); color: var(--navy); letter-spacing: -.02em; }
 .chip span { font-size: 13px; font-weight: 600; color: var(--muted); line-height: 1.25; max-width: 7em; }
 .chip .ico { color: var(--coral); font-size: 18px; max-width: none; }
-.ch1 { left: -8%; top: 18%; }
-.ch2 { right: -6%; top: 34%; animation-delay: -2s; }
-.ch3 { left: -2%; top: 36%; animation-delay: -4s; }
+.ch1 { left: -6%; top: 24%; }
+.ch2 { right: -6%; top: 58%; animation-delay: -2s; }
+.ch3 { left: 2%; bottom: 12%; animation-delay: -4s; }
 .ch3 span:last-child { max-width: none; }
 @keyframes bob { 50% { transform: translateY(-10px); } }
 
@@ -229,5 +229,7 @@ h2 { font: 800 clamp(34px, 4.6vw, 62px)/1.02 var(--display); letter-spacing: -.0
   .chip { padding: 8px 12px; } .chip b { font-size: 20px; }
   .ch3 { display: none; }
   .news-card { padding: 34px 26px; }
-  .globe-stage { margin-bottom: -6%; }
+  .hero { padding-bottom: 20px; }
+  .tile-art { width: 72px; top: 26px; right: 26px; }
+  .t-mission { padding-top: 116px; }
 }
