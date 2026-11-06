@@ -23,7 +23,7 @@ jobs:
       - name: Assemble site
         run: |
           mkdir -p _site
-          cp -r index.html shared v1 v2 v3 v4 _site/
+          cp -r index.html shared v1 v2 v3 v4 v5 _site/
           touch _site/.nojekyll
       - name: Publish to gh-pages
         run: |

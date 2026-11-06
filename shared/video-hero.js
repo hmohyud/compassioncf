@@ -1,7 +1,9 @@
-// Hero video loader, built for efficiency:
+// Shared hero video loader (v4, v5). Configure on the <video> element:
+//   data-webm, data-mp4 (desktop 720p) and data-mobile (portrait mp4), paths relative to shared/video/.
+// Built for efficiency:
 // - The poster image paints first (preloaded); the video is attached only after page load.
 // - Picks a source by viewport: 540x960 portrait (~1.1 MB) on phones; 1280x720 WebM VP9 (~1.6 MB)
-//   or MP4 H.264 (~2.1 MB) elsewhere.
+//   or MP4 H.264 (~2.1 MB) elsewhere (sizes for the v4 sunrise loop).
 // - Skipped entirely for prefers-reduced-motion or Save-Data users (they keep the still poster).
 // - Pauses while the hero is off-screen or the tab is hidden; resumes when visible.
 // - Fades out just before each loop and back in after it, so the restart isn't a hard cut.
@@ -10,7 +12,7 @@
 const video = document.querySelector('.hero-video');
 const toggle = document.querySelector('.vid-toggle');
 const hero = document.querySelector('.hero');
-const base = new URL('../shared/video/', import.meta.url).href;
+const base = new URL('./video/', import.meta.url).href;
 
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const saveData = navigator.connection && navigator.connection.saveData;
@@ -18,10 +20,12 @@ const saveData = navigator.connection && navigator.connection.saveData;
 if (video && !reduce && !saveData) {
   const start = () => {
     const mobile = matchMedia('(max-width: 700px)').matches;
+    const d = video.dataset;
     const sources = mobile
-      ? [['hero-mobile.mp4', 'video/mp4']]
-      : [['hero-720.webm', 'video/webm'], ['hero-720.mp4', 'video/mp4']];
+      ? [[d.mobile, 'video/mp4']]
+      : [[d.webm, 'video/webm'], [d.mp4, 'video/mp4']];
     for (const [file, type] of sources) {
+      if (!file) continue;
       const s = document.createElement('source');
       s.src = base + file;
       s.type = type;

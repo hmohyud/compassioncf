@@ -43,7 +43,7 @@
           <source media="(max-width: 700px)" srcset="../shared/video/poster-mobile.jpg">
           <img class="hero-poster" src="../shared/video/poster.jpg" alt="" width="1600" height="900" fetchpriority="high" decoding="async">
         </picture>
-        <video class="hero-video" muted playsinline loop preload="none" disablepictureinpicture></video>
+        <video class="hero-video" muted playsinline loop preload="none" disablepictureinpicture data-webm="hero-720.webm" data-mp4="hero-720.mp4" data-mobile="hero-mobile.mp4"></video>
       </div>
       <div class="hero-shade" aria-hidden="true"></div>
 
@@ -226,7 +226,7 @@
     </div>
   </footer>
 
-  <script type="module" src="hero.js"></script>
+  <script type="module" src="../shared/video-hero.js"></script>
   <script type="module" src="../shared/site.js"></script>
 </body>
 </html>
