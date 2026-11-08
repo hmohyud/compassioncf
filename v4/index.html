@@ -76,6 +76,23 @@
       </div>
     </section>
 
+    <!-- REACH: the participant globe -->
+    <section class="sec reach" id="reach">
+      <div class="wrap reach-grid">
+        <div class="reach-copy reveal">
+          <p class="label light">Our Reach</p>
+          <h2>A community of practice that already <em>spans the world.</em></h2>
+          <p>Every point of light is a place where someone has taken the Compassion Course. Drag the globe to explore.</p>
+          <ul class="reach-stats">
+            <li><b data-count="3898">3,898</b><span>Places</span></li>
+            <li><b data-count="487">487</b><span>Regions</span></li>
+            <li><b>6</b><span>Continents</span></li>
+          </ul>
+        </div>
+        <div class="reach-globe reveal"><div id="globe"></div></div>
+      </div>
+    </section>
+
     <!-- APPROACH -->
     <section class="sec approach" id="approach">
       <div class="wrap split">
@@ -226,6 +243,10 @@
     </div>
   </footer>
 
+  <script type="module">
+    import { lazyGlobe } from '../shared/globe-lazy.js';
+    lazyGlobe(document.getElementById('globe'), { marker: '226,190,130', hover: '255,236,200', maxSize: 600 });
+  </script>
   <script type="module" src="../shared/video-hero.js"></script>
   <script type="module" src="../shared/site.js"></script>
 </body>

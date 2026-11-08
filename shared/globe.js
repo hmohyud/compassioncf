@@ -50,7 +50,7 @@ function injectStyles() {
   @media (prefers-reduced-motion:reduce){.g-wrap{opacity:1;transform:none}.g-wrap.ready{animation:none}}
   .g-glow{position:absolute;inset:-15%;border-radius:50%;pointer-events:none;background:radial-gradient(circle,var(--g-glow,rgba(95,169,227,.14)) 0%,transparent 65%)}
   .g-wrap canvas{position:absolute;inset:0;display:block}
-  .g-clouds{z-index:2;cursor:grab;touch-action:none}
+  .g-clouds{z-index:2;cursor:grab;touch-action:pan-y}
   .g-stem{position:absolute;inset:0;pointer-events:none;transition:opacity .25s}
   .g-tip{position:absolute;pointer-events:none;z-index:11;max-width:220px;white-space:nowrap;text-align:left;
     padding:8px 14px;border-radius:12px;transform:translate(-80%,0);opacity:0;transition:opacity .25s;
@@ -282,12 +282,22 @@ export function mountGlobe(host, opts = {}) {
       hovered = i;
     }
   });
+  // Touch: horizontal drags spin the globe, vertical drags scroll the page
+  // (so a globe placed mid-page never traps the reader's scroll).
+  let touchAxis = null, ty0 = 0;
   cloudCanvas.addEventListener('touchstart', (e) => {
     const t = e.touches[0]; if (!t) return;
-    down = true; lastX = t.clientX; vel = 0; autoOn = false; lastInteract = Date.now();
+    down = true; lastX = sx0 = t.clientX; ty0 = t.clientY; touchAxis = null; vel = 0;
   }, { passive: true });
   cloudCanvas.addEventListener('touchmove', (e) => {
     const t = e.touches[0]; if (!down || !t) return;
+    if (!touchAxis) {
+      const ax = Math.abs(t.clientX - sx0), ay = Math.abs(t.clientY - ty0);
+      if (ax < 6 && ay < 6) return;
+      touchAxis = ax > ay ? 'x' : 'y';
+      if (touchAxis === 'y') { down = false; return; }
+      autoOn = false; lastInteract = Date.now();
+    }
     e.preventDefault();
     const dx = t.clientX - lastX; lastX = t.clientX; target += dx / 150; vel = dx / 150;
   }, { passive: false });

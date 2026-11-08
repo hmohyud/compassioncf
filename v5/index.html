@@ -95,10 +95,18 @@
           <figure class="m m4 reveal"><img src="../shared/img/online.jpg" alt="An online class with many faces on a laptop screen" width="1500" height="844" loading="lazy" decoding="async"><figcaption>Practising across borders</figcaption></figure>
           <figure class="m m5 reveal"><img src="../shared/img/listening.jpg" alt="A room of people with their arms around one another" width="400" height="225" loading="lazy" decoding="async"><figcaption>Holding each other up</figcaption></figure>
         </div>
-        <div class="reach reveal">
-          <p><b>3,898</b> places where people have joined the Compassion Course</p>
-          <p><b>6</b> continents</p>
-          <p><b>1</b> shared hope: that peace can be learned</p>
+        <div class="reach">
+          <div class="reach-globe reveal"><div id="globe"></div></div>
+          <div class="reach-copy reveal">
+            <p class="label">Everywhere, all at once</p>
+            <h3>Every light on this globe is a place where someone <em>said yes.</em></h3>
+            <ul class="reach-stats">
+              <li><b data-count="3898">3,898</b>places where people have joined the Compassion Course</li>
+              <li><b>6</b>continents</li>
+              <li><b>1</b>shared hope: that peace can be learned</li>
+            </ul>
+            <p class="reach-hint">Drag the globe to explore.</p>
+          </div>
         </div>
       </div>
     </section>
@@ -205,6 +213,10 @@
     <div class="wrap ftr-base"><span>© <span data-year>2026</span> Compassion Course Foundation, Inc. All rights reserved.</span><span>Hero footage: Pexels</span></div>
   </footer>
 
+  <script type="module">
+    import { lazyGlobe } from '../shared/globe-lazy.js';
+    lazyGlobe(document.getElementById('globe'), { marker: '226,120,82', hover: '255,214,190', maxSize: 560, cloudOpacity: .22 });
+  </script>
   <script type="module" src="../shared/video-hero.js"></script>
   <script type="module" src="../shared/site.js"></script>
 </body>

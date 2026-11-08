@@ -2,7 +2,8 @@
    Direction 5 — "Kindred"
    Same premium restraint as Meridian, but warmer and centred on
    people: a full-screen montage of friends and gatherings, an
-   editorial photo mosaic, terracotta and warm-cream tones.
+   editorial photo mosaic with the participant globe beneath it,
+   terracotta and warm-cream tones.
    Newsreader + Instrument Sans.
    ============================================================ */
 :root {
@@ -22,6 +23,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; scroll-padding-top: 76px; }
 body { overflow-x: clip; font: 16.5px/1.7 var(--sans); color: var(--text); background: var(--cream); -webkit-font-smoothing: antialiased; }
+main { overflow-x: clip; } /* keeps the globe glow from widening the page on phones */
 img { display: block; max-width: 100%; height: auto; }
 a { color: inherit; }
 em { font-style: italic; }
@@ -126,9 +128,15 @@ h2 em { color: var(--clay); }
 .m3 { grid-column: 8 / 10; grid-row: 4 / 7; }
 .m5 { grid-column: 10 / 13; grid-row: 4 / 7; }
 .m4 { grid-column: 1 / 8; grid-row: 5 / 7; }
-.reach { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 56px; border-top: 1px solid var(--line); }
-.reach p { padding: 26px 26px 0 0; color: var(--muted); font-size: 15px; }
-.reach b { display: block; font: 300 52px/1 var(--serif); color: var(--cocoa); margin-bottom: 8px; letter-spacing: -.02em; }
+.reach { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(40px, 6vw, 96px); align-items: center; margin-top: 72px; padding-top: 64px; border-top: 1px solid var(--line); }
+.reach-globe { --g-glow: rgba(192, 96, 63, .18); --g-tip-bg: rgba(35, 26, 24, .84); --g-tip-border: rgba(232, 183, 159, .3); }
+#globe { position: relative; max-width: 560px; aspect-ratio: 1; margin: 0 auto; }
+.reach-copy h3 { font: 300 clamp(30px, 3vw, 42px)/1.15 var(--serif); letter-spacing: -.015em; color: var(--cocoa); }
+.reach-copy h3 em { color: var(--clay); }
+.reach-stats { list-style: none; margin-top: 34px; border-top: 1px solid var(--line); }
+.reach-stats li { display: grid; grid-template-columns: 120px 1fr; gap: 20px; align-items: baseline; padding: 18px 0; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 15px; }
+.reach-stats b { font: 300 46px/1 var(--serif); color: var(--cocoa); letter-spacing: -.02em; }
+.reach-hint { margin-top: 18px; font: italic 400 17px var(--serif); color: var(--muted); }
 
 .change-grid { display: grid; grid-template-columns: 1fr 1.1fr; gap: clamp(48px, 7vw, 110px); align-items: center; }
 .change-img { margin: 0; aspect-ratio: 4 / 5; overflow: hidden; border-radius: 6px; }
@@ -141,7 +149,9 @@ h2 em { color: var(--clay); }
 
 .band { position: relative; min-height: 80vh; display: flex; align-items: flex-end; color: #fff; overflow: hidden; }
 .band > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.band::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(25,16,12,.85) 0%, rgba(25,16,12,.35) 50%, rgba(25,16,12,.1)); }
+.band::after { content: ''; position: absolute; inset: 0; background:
+  linear-gradient(0deg, rgba(25,16,12,.9) 0%, rgba(25,16,12,.62) 45%, rgba(25,16,12,.15) 85%),
+  linear-gradient(90deg, rgba(25,16,12,.4) 0%, rgba(25,16,12,0) 70%); }
 .band-in { position: relative; z-index: 1; padding: 120px 0 90px; }
 .band blockquote { font: 300 clamp(32px, 4vw, 58px)/1.14 var(--serif); letter-spacing: -.02em; max-width: 20em; }
 .band blockquote em { color: #f6cdb8; }
@@ -224,7 +234,9 @@ h2 em { color: var(--clay); }
   .m1 { grid-column: 1 / 3; grid-row: span 2; }
   .m2, .m3, .m4, .m5 { grid-column: auto; grid-row: span 1; }
   .m4 { grid-column: 1 / 3; }
-  .reach { grid-template-columns: 1fr; }
+  .reach { grid-template-columns: 1fr; margin-top: 48px; padding-top: 40px; }
+  .reach-stats li { grid-template-columns: 96px 1fr; gap: 14px; }
+  .reach-stats b { font-size: 40px; }
   .change-img { aspect-ratio: 4 / 3; }
 }
 @media (max-width: 560px) {

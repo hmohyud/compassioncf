@@ -1,7 +1,7 @@
 /* ============================================================
    Direction 2 — "Morning Paper"
-   Editorial, typographic, no globe. Warm paper, ink, brand red,
-   and a sun that rises through the headline.
+   Editorial, typographic. Warm paper, ink, brand red, a sun
+   that rises through the headline, and the globe as a figure.
    Instrument Serif + Manrope.
    ============================================================ */
 :root {
@@ -23,6 +23,7 @@ html { scroll-behavior: smooth; scroll-padding-top: 70px; }
 body { overflow-x: clip; font: 17px/1.65 var(--sans); color: var(--ink); background: var(--paper); -webkit-font-smoothing: antialiased; }
 body::before { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 100; opacity: .35; mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .32 0 0 0 0 .2 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+main { overflow-x: clip; } /* keeps the tilted ticker and globe glow from widening the page on phones */
 img { display: block; max-width: 100%; }
 a { color: inherit; }
 em { font-style: italic; }
@@ -73,7 +74,7 @@ em { font-style: italic; }
 .ph img { width: 100%; height: 100%; object-fit: cover; }
 .p1 { width: clamp(150px, 17vw, 260px); aspect-ratio: 5/4; right: 5%; top: 120px; transform: rotate(4deg); animation-delay: .5s; }
 .p2 { width: clamp(130px, 13vw, 210px); aspect-ratio: 4/3; right: 25%; top: 140px; transform: rotate(-5deg); animation-delay: .65s; }
-.p3 { width: clamp(130px, 14vw, 220px); aspect-ratio: 4/3; left: 4%; top: calc(150px + clamp(64px, 12.4vw, 190px) * 1.85); transform: rotate(-3deg); animation-delay: .8s; }
+.p3 { width: clamp(130px, 14vw, 220px); aspect-ratio: 4/3; left: 4%; top: calc(126px + clamp(64px, 12.4vw, 190px) * 1.85); transform: rotate(-3deg); animation-delay: .8s; }
 @keyframes drop { from { opacity: 0; translate: 0 -30px; } to { opacity: 1; translate: 0 0; } }
 
 /* ---------- ticker ---------- */
@@ -93,6 +94,17 @@ em { font-style: italic; }
 .tag { font: 700 13px var(--sans); letter-spacing: .18em; text-transform: uppercase; color: var(--muted); margin-bottom: 18px; }
 .statement { font: 400 clamp(28px, 2.7vw, 40px)/1.18 var(--serif); letter-spacing: -.01em; }
 mark { background: linear-gradient(transparent 58%, var(--peach) 58%, var(--peach) 92%, transparent 92%); color: inherit; padding: 0 .05em; }
+
+.map { padding-top: 0; }
+.map-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: clamp(40px, 6vw, 90px); align-items: center; }
+.map-fig { --g-glow: rgba(255, 191, 60, .38); --g-tip-bg: rgba(29, 26, 23, .86); --g-tip-border: rgba(248, 242, 231, .2); }
+.globe { position: relative; max-width: 560px; aspect-ratio: 1; margin: 0 auto; }
+.globe::before { content: ''; position: absolute; inset: 9%; border-radius: 50%; border: 1px dashed rgba(29, 26, 23, .28); pointer-events: none; }
+.map-fig figcaption { font: italic 400 18px var(--serif); color: var(--muted); text-align: center; max-width: 30em; margin: 14px auto 0; }
+.map-stats { list-style: none; border-top: 1px solid var(--ink); }
+.map-stats li { display: grid; grid-template-columns: 170px 1fr; gap: 24px; align-items: baseline; padding: 26px 0; border-bottom: 1px solid var(--line); }
+.map-stats b { font: italic 400 clamp(46px, 4.6vw, 64px)/1 var(--serif); color: var(--red); letter-spacing: -.02em; }
+.map-stats span { font: 400 24px/1.2 var(--serif); }
 
 .why { background: var(--paper-2); }
 .why-top { display: grid; grid-template-columns: 220px 1fr; gap: 56px; border-top: 1px solid var(--ink); padding-top: 34px; margin-bottom: 64px; }
@@ -170,8 +182,8 @@ mark { background: linear-gradient(transparent 58%, var(--peach) 58%, var(--peac
 /* ---------- reveal ---------- */
 .reveal { opacity: 0; transform: translateY(30px); transition: opacity 1s cubic-bezier(.2,.7,.2,1), transform 1s cubic-bezier(.2,.7,.2,1); }
 .reveal.in { opacity: 1; transform: none; }
-.mv-grid .reveal:nth-child(2), .prog-list .reveal:nth-child(2) { transition-delay: .1s; }
-.mv-grid .reveal:nth-child(3), .prog-list .reveal:nth-child(3) { transition-delay: .2s; }
+.mv-grid .reveal:nth-child(2), .prog-list .reveal:nth-child(2), .map-stats .reveal:nth-child(2) { transition-delay: .1s; }
+.mv-grid .reveal:nth-child(3), .prog-list .reveal:nth-child(3), .map-stats .reveal:nth-child(3) { transition-delay: .2s; }
 .prog-list .reveal:nth-child(4) { transition-delay: .3s; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -196,7 +208,9 @@ mark { background: linear-gradient(transparent 58%, var(--peach) 58%, var(--peac
   .masthead span:nth-child(n+3) { display: none; }
   .collage { display: none; }
   .l2 { padding-left: 0; }
-  .hero-foot, .mv-grid, .why-cols, .inv-grid { grid-template-columns: 1fr; }
+  .hero-foot, .mv-grid, .why-cols, .inv-grid, .map-grid { grid-template-columns: 1fr; }
+  .map-stats li { grid-template-columns: 120px 1fr; gap: 16px; padding: 20px 0; }
+  .map-stats span { font-size: 21px; }
   .hero-cta { flex-wrap: wrap; }
   .ev-list { grid-template-columns: 1fr; }
   .ev-list li { border-right: 0; margin-right: 0; border-bottom: 1px solid var(--line); }

@@ -4,17 +4,18 @@ Five design directions for a revamped [compassioncf.com](https://compassioncf.co
 
 Live: https://hmohyud.github.io/compassioncf/
 
-| Path | Direction | Hero |
-|---|---|---|
-| `/` | Chooser page | — |
-| `/v1/` | **Dawn**: night sky to sunrise, Fraunces serif | Participant globe |
-| `/v2/` | **Morning Paper**: editorial, typographic, warm paper | Typography + rising sun (no globe) |
-| `/v3/` | **Bright Horizon**: sky blue, sunshine, coral, bento | Participant globe |
-| `/v4/` | **Meridian**: premium editorial, ivory, ink and gold | Full-screen sunrise video (no globe) |
-| `/v5/` | **Kindred**: Meridian's polish with a people focus, terracotta and cream | Full-screen people montage video (no globe) |
+| Path | Direction | Hero | Globe |
+|---|---|---|---|
+| `/` | Chooser page | — | — |
+| `/v1/` | **Dawn**: night sky to sunrise, Fraunces serif | Participant globe | In the hero |
+| `/v2/` | **Morning Paper**: editorial, typographic, warm paper | Typography + rising sun | Section II, "Where we are" |
+| `/v3/` | **Bright Horizon**: sky blue, sunshine, coral, bento | Participant globe | In the hero |
+| `/v4/` | **Meridian**: premium editorial, ivory, ink and gold | Full-screen sunrise video | "Our Reach" section after the mission |
+| `/v5/` | **Kindred**: Meridian's polish with a people focus, terracotta and cream | Full-screen people montage video | Under the people mosaic |
 
 ## Structure
 - `shared/globe.js`: vanilla Three.js port of the hero globe from `compassion-course-website/src/components/Globe.tsx` (drag to spin, hover/click tooltips, auto-tour). Options: marker/hover colours, max size, cloud opacity.
+- `shared/globe-lazy.js`: mounts the globe only when it nears the viewport (v2, v4, v5), so three.js and the textures aren't downloaded until the reader scrolls toward it.
 - `shared/clusters.js`: participant map pre-clustered on a 3° grid (3,898 locations → 487 regions).
 - `shared/vendor/`: three.js r182 (minified ES modules, no CDN).
 - `shared/video-hero.js`: hero video loader used by v4 and v5 (sources set via `data-webm` / `data-mp4` / `data-mobile`).

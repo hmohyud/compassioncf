@@ -95,11 +95,32 @@
       </div>
     </section>
 
+    <!-- MAP: the participant globe as an editorial figure -->
+    <section class="sec map" id="map">
+      <div class="wrap">
+        <div class="why-top">
+          <div class="mv-label reveal"><span class="num">II.</span><span>Where we<br>are</span></div>
+          <h2 class="display reveal">Everyone. Everywhere. <em>Already.</em></h2>
+        </div>
+        <div class="map-grid">
+          <figure class="map-fig reveal">
+            <div id="globe" class="globe"></div>
+            <figcaption>Fig. 1 — Every dot is a place where someone has taken the Compassion Course. Drag to turn the world.</figcaption>
+          </figure>
+          <ul class="map-stats">
+            <li class="reveal"><b data-count="3898">3,898</b><span>places where people have joined the Compassion Course</span></li>
+            <li class="reveal"><b data-count="487">487</b><span>regions lit up on the map</span></li>
+            <li class="reveal"><b>6</b><span>continents, one shared hope</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
     <!-- WHY -->
     <section class="sec why" id="why">
       <div class="wrap">
         <div class="why-top">
-          <div class="mv-label reveal"><span class="num">II.</span><span>Why peace<br>education</span></div>
+          <div class="mv-label reveal"><span class="num">III.</span><span>Why peace<br>education</span></div>
           <h2 class="display reveal">The most hopeful idea we know: <em>peace can be learned</em> before conflict ever begins.</h2>
         </div>
         <div class="why-cols">
@@ -136,7 +157,7 @@
     <section class="sec programs" id="programs">
       <div class="wrap">
         <div class="why-top">
-          <div class="mv-label reveal"><span class="num">III.</span><span>Our<br>programs</span></div>
+          <div class="mv-label reveal"><span class="num">IV.</span><span>Our<br>programs</span></div>
           <h2 class="display reveal">Where the learning <em>happens.</em></h2>
         </div>
         <ul class="prog-list">
@@ -184,7 +205,7 @@
     <section class="sec involved" id="involved">
       <div class="wrap inv-grid">
         <div class="inv-copy reveal">
-          <div class="mv-label"><span class="num">IV.</span><span>Get<br>involved</span></div>
+          <div class="mv-label"><span class="num">V.</span><span>Get<br>involved</span></div>
           <h2 class="display">Join us in making <em>a difference.</em></h2>
           <p>Whether through volunteering, donating, or participating in our programs — there is a place for you in this work.</p>
           <div class="inv-links">
@@ -248,6 +269,10 @@
         g.appendChild(r);
       }
     })();
+  </script>
+  <script type="module">
+    import { lazyGlobe } from '../shared/globe-lazy.js';
+    lazyGlobe(document.getElementById('globe'), { marker: '200,40,45', hover: '255,154,60', maxSize: 560, cloudOpacity: .22 });
   </script>
   <script type="module" src="../shared/site.js"></script>
 </body>
