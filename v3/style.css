@@ -239,3 +239,11 @@ h2 { font: 800 clamp(34px, 4.6vw, 62px)/1.02 var(--display); letter-spacing: -.0
   .tile-art { width: 72px; top: 26px; right: 26px; }
   .t-mission { padding-top: 116px; }
 }
+
+/* Donate dialog (shared/donate.js) */
+:root {
+  --dn-bg: var(--cream); --dn-ink: var(--navy); --dn-muted: var(--muted); --dn-line: rgba(15, 38, 72, .15);
+  --dn-accent: var(--coral); --dn-sans: var(--sans); --dn-title-font: 700 34px/1.05 var(--display);
+  --dn-radius: var(--r); --dn-chip-radius: 16px; --dn-scrim: rgba(15, 38, 72, .5);
+  --dn-btn-bg: var(--coral); --dn-btn-ink: #fff; --dn-btn-font: 700 16px var(--sans);
+}

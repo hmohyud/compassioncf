@@ -249,3 +249,11 @@ h2 em { color: var(--clay); }
   .ftr-grid { grid-template-columns: 1fr 1fr; }
   .hero-cta .btn { flex: 1 1 auto; }
 }
+
+/* Donate dialog (shared/donate.js) */
+:root {
+  --dn-bg: var(--cream); --dn-ink: var(--cocoa); --dn-muted: var(--muted); --dn-line: var(--line);
+  --dn-accent: var(--clay); --dn-sans: var(--sans); --dn-title-font: 400 40px/1.04 var(--serif);
+  --dn-radius: 22px; --dn-chip-radius: 999px; --dn-scrim: rgba(35, 26, 24, .6);
+  --dn-btn-bg: var(--clay); --dn-btn-ink: #fff; --dn-btn-font: 500 16px var(--sans);
+}

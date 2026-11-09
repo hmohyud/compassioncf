@@ -200,3 +200,11 @@ em { font-style: italic; }
   .mv, .why-grid, .cards, .ways, .ftr-grid { grid-template-columns: 1fr; }
   .mv-card { padding: 36px 28px; }
 }
+
+/* Donate dialog (shared/donate.js) */
+:root {
+  --dn-bg: var(--cream); --dn-ink: var(--ink); --dn-muted: var(--muted); --dn-line: rgba(20, 26, 68, .16);
+  --dn-accent: var(--red); --dn-sans: var(--sans); --dn-title-font: 400 38px/1.05 var(--serif);
+  --dn-radius: var(--r); --dn-chip-radius: 14px; --dn-scrim: rgba(11, 16, 48, .62);
+  --dn-btn-bg: linear-gradient(120deg, var(--gold), var(--amber) 45%, var(--rose)); --dn-btn-ink: #3a1a0c; --dn-btn-font: 600 16px var(--sans);
+}

@@ -241,3 +241,11 @@ h2 em { color: var(--gold); }
   .reach-stats li + li { padding-left: 14px; }
   .reach-stats span { letter-spacing: .16em; }
 }
+
+/* Donate dialog (shared/donate.js) */
+:root {
+  --dn-bg: var(--ivory); --dn-ink: var(--ink); --dn-muted: var(--muted); --dn-line: var(--line);
+  --dn-accent: var(--gold); --dn-sans: var(--sans); --dn-title-font: 500 42px/1.02 var(--serif);
+  --dn-radius: 0; --dn-chip-radius: 0; --dn-scrim: rgba(14, 26, 43, .62);
+  --dn-btn-bg: var(--ink); --dn-btn-ink: #fff; --dn-btn-font: 500 13px var(--sans); --dn-btn-track: .14em; --dn-btn-case: uppercase; --dn-btn-radius: 0;
+}

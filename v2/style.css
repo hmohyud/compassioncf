@@ -228,3 +228,11 @@ mark { background: linear-gradient(transparent 58%, var(--peach) 58%, var(--peac
   .inv-links span { grid-column: 1; }
   .badge { left: 12px; bottom: 12px; width: 120px; height: 120px; }
 }
+
+/* Donate dialog (shared/donate.js) */
+:root {
+  --dn-bg: var(--paper); --dn-ink: var(--ink); --dn-muted: var(--muted); --dn-line: var(--line);
+  --dn-accent: var(--red); --dn-sans: var(--sans); --dn-title-font: 400 46px/1 var(--serif);
+  --dn-radius: 6px; --dn-chip-radius: 999px; --dn-scrim: rgba(29, 26, 23, .55);
+  --dn-btn-bg: var(--red); --dn-btn-ink: #fff; --dn-btn-font: 600 16px var(--sans);
+}

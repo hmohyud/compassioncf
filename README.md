@@ -22,6 +22,7 @@ Live: https://hmohyud.github.io/compassioncf/
 - `shared/video/people-*`: v5 hero, an 18.5 s montage of three Pexels clips (sunset gathering, friends in a circle, group hug), colour-matched, crossfaded: WebM 1.5 MB, MP4 2.2 MB, phone crop 1.0 MB.
 - `shared/video/`: v4 hero loop (Pexels, free license), 20 s at 24 fps: 1280×720 WebM VP9 (1.6 MB), MP4 H.264 fallback (2.1 MB), 540×960 phone crop (1.1 MB), plus posters. the loader attaches it only after page load, skips it for reduced-motion and Save-Data users, and pauses it off-screen.
 - `shared/site.js`: scroll reveals, count-ups, mobile nav, demo newsletter form.
+- `shared/donate.js`: the donate dialog every `[data-donate]` link opens (currency, $25–$500 presets, custom amount), themed per version with `--dn-*` variables. "Donate" calls the same Firebase function as compassioncf.com/donate (`createCheckoutSession` on `compassioncf-web-site`) and goes to the Stripe checkout page it returns; if that call fails, it offers the compassioncf.com donate page instead.
 - `_reference/`: export of the current site and the copy pulled from it (`CONTENT.md`). Not deployed.
 
 No build step. Serve the folder locally with `python -m http.server`.
