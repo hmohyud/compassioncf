@@ -17,15 +17,29 @@ const io = new IntersectionObserver((entries) => {
 }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
 document.querySelectorAll('.reveal, [data-count]').forEach((el) => io.observe(el));
 
-function countUp(el) {
+// Counting numbers keep the final value's footprint, so the words around them stay still:
+// digits are tabular (equal width), and while counting the number sits in a box fixed at
+// its final width, filling in from the right like an odometer. A version can override the
+// alignment with a more specific rule, e.g. `.facts b.counting { text-align: center }`.
+const countCss = document.createElement('style');
+countCss.textContent = '[data-count]{font-variant-numeric:tabular-nums}.counting{display:inline-block;white-space:nowrap;text-align:right}';
+document.head.append(countCss);
+
+async function countUp(el) {
   const end = Number(el.dataset.count);
   const fmt = (n) => Math.round(n).toLocaleString('en-US');
-  if (reduced) { el.textContent = fmt(end); return; }
+  el.textContent = fmt(end);
+  if (reduced) return;
+  await document.fonts.ready; // measure in the real font, not the fallback
+  el.classList.add('counting');
+  el.style.width = `${el.getBoundingClientRect().width}px`;
   const dur = 1800, t0 = performance.now();
   const step = (t) => {
     const p = Math.min(1, (t - t0) / dur);
     el.textContent = fmt(end * (1 - Math.pow(1 - p, 4)));
-    if (p < 1) requestAnimationFrame(step);
+    if (p < 1) return requestAnimationFrame(step);
+    el.classList.remove('counting');
+    el.style.width = '';
   };
   requestAnimationFrame(step);
 }

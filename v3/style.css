@@ -104,8 +104,7 @@ h2 { font: 800 clamp(34px, 4.6vw, 62px)/1.02 var(--display); letter-spacing: -.0
 /* ---------- bento ---------- */
 .bento-sec { background: #fff; border-radius: 48px 48px 0 0; margin-top: -48px; z-index: 3; box-shadow: 0 -30px 60px -40px rgba(15,38,72,.3); }
 .bento { display: grid; grid-template-columns: 1.3fr 1fr 1fr; grid-template-rows: auto auto; gap: 20px; }
-.tile { border-radius: var(--r); padding: 40px; position: relative; overflow: hidden; transition: transform .35s cubic-bezier(.3,1.4,.5,1); }
-.tile:hover { transform: translateY(-4px) rotate(-.3deg); }
+.tile { border-radius: var(--r); padding: 40px; position: relative; overflow: hidden; }
 .tile-tag { display: inline-block; font-weight: 700; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 18px; opacity: .8; }
 .tile p { font: 600 clamp(22px, 2.2vw, 30px)/1.2 var(--display); letter-spacing: -.02em; }
 .t-mission { grid-row: span 2; background: var(--navy); color: #fff; display: flex; flex-direction: column; justify-content: flex-end; min-height: 460px; }
@@ -124,8 +123,7 @@ h2 { font: 800 clamp(34px, 4.6vw, 62px)/1.02 var(--display); letter-spacing: -.0
 .why-copy h2 { margin-bottom: 24px; }
 .why-copy p { color: var(--muted); margin-bottom: 16px; }
 .benefits { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.benefits li { border-radius: 24px; padding: 26px 24px; font: 700 19px/1.25 var(--display); letter-spacing: -.01em; color: var(--navy); min-height: 200px; display: flex; flex-direction: column; justify-content: space-between; gap: 20px; box-shadow: 0 16px 30px -22px rgba(15,38,72,.45); transition: transform .35s cubic-bezier(.3,1.5,.5,1); }
-.benefits li:hover { transform: translateY(-6px) rotate(1deg); }
+.benefits li { border-radius: 24px; padding: 26px 24px; font: 700 19px/1.25 var(--display); letter-spacing: -.01em; color: var(--navy); min-height: 200px; display: flex; flex-direction: column; justify-content: space-between; gap: 20px; box-shadow: 0 16px 30px -22px rgba(15,38,72,.45); }
 .b-ico { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; background: rgba(255,255,255,.7); }
 .b-ico svg { width: 28px; height: 28px; }
 .b1 { background: #d9efff; } .b1 .b-ico { color: var(--blue); }
