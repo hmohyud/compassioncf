@@ -166,6 +166,12 @@ em { font-style: italic; }
 .ftr-grid a:hover { color: var(--amber); }
 .ftr-tag { margin-top: 18px; font: italic 300 18px var(--serif); color: rgba(255,255,255,.6); }
 .ftr-base { margin-top: 50px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,.1); font-size: 13px; }
+/* Thom Bond's social links */
+.social { margin-top: 28px; }
+.social ul { list-style: none; display: flex; flex-wrap: wrap; gap: 10px; }
+.social a { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,255,255,.2); color: rgba(255,255,255,.82); text-decoration: none; transition: color .3s, border-color .3s; }
+.social a:hover, .social a:focus-visible { color: var(--amber); border-color: var(--amber); }
+.social svg { width: 18px; height: 18px; }
 
 /* ---------- reveal ---------- */
 .reveal { opacity: 0; transform: translateY(28px); transition: opacity .9s cubic-bezier(.2,.7,.2,1), transform .9s cubic-bezier(.2,.7,.2,1); }

@@ -178,6 +178,13 @@ mark { background: linear-gradient(transparent 58%, var(--peach) 58%, var(--peac
 .ftr nav a { text-decoration: none; opacity: .8; }
 .ftr nav a:hover { opacity: 1; color: var(--sun); }
 .ftr-base { margin-top: 26px; font-size: 13px; opacity: .55; }
+/* Thom Bond's social links */
+.social { margin-top: 44px; }
+.social h4 { font: 600 12px var(--sans); letter-spacing: .2em; text-transform: uppercase; opacity: .6; margin-bottom: 14px; }
+.social ul { list-style: none; display: flex; flex-wrap: wrap; gap: 10px; }
+.social a { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(248,242,231,.24); color: var(--paper); text-decoration: none; transition: color .3s, border-color .3s; }
+.social a:hover, .social a:focus-visible { color: var(--sun); border-color: var(--sun); }
+.social svg { width: 18px; height: 18px; }
 
 /* ---------- reveal ---------- */
 .reveal { opacity: 0; transform: translateY(30px); transition: opacity 1s cubic-bezier(.2,.7,.2,1), transform 1s cubic-bezier(.2,.7,.2,1); }

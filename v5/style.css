@@ -198,6 +198,12 @@ h2 em { color: var(--clay); }
 .ftr nav a { display: block; text-decoration: none; padding: 4px 0; transition: color .3s; }
 .ftr nav a:hover { color: #fff; }
 .ftr-base { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 70px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,.1); font-size: 12.5px; color: rgba(255,255,255,.45); }
+/* Thom Bond's social links */
+.social { margin-top: 32px; }
+.social ul { list-style: none; display: flex; flex-wrap: wrap; gap: 10px; }
+.social a { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,255,255,.16); color: rgba(255,255,255,.78); text-decoration: none; transition: color .3s, border-color .3s; }
+.social a:hover, .social a:focus-visible { color: var(--clay-soft); border-color: var(--clay-soft); }
+.social svg { width: 18px; height: 18px; }
 
 /* ---------- reveal ---------- */
 .reveal { opacity: 0; transform: translateY(24px); transition: opacity 1.1s var(--ease), transform 1.1s var(--ease); }

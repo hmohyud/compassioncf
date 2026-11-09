@@ -10,19 +10,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    :root { --ink: #1c1a2e; --muted: #6c6880; --bg: #fbf7f1; --red: #c8282d; }
+    :root { --ink: #1c1a2e; --bg: #fbf7f1; --red: #c8282d; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font: 16px/1.6 'DM Sans', system-ui, sans-serif; color: var(--ink); background: var(--bg); min-height: 100vh;
       background-image: radial-gradient(ellipse 80% 50% at 50% -10%, #ffe2c2 0%, transparent 70%); }
     a { color: inherit; text-decoration: none; }
     .wrap { width: min(1200px, 100% - 48px); margin: 0 auto; }
-    header { padding: 64px 0 40px; text-align: center; }
-    header img { width: 64px; margin: 0 auto 20px; }
-    .eyebrow { font-size: 12px; letter-spacing: .26em; text-transform: uppercase; color: var(--red); font-weight: 600; }
-    h1 { font: 400 clamp(36px, 5vw, 60px)/1.05 'Fraunces', serif; letter-spacing: -.02em; margin: 12px 0 14px; }
-    h1 em { color: #d0664c; font-weight: 300; }
-    header p { color: var(--muted); max-width: 38em; margin: 0 auto; }
-    .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 30px; padding-bottom: 70px; max-width: 1240px; }
+    .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 30px; padding: 72px 0 80px; max-width: 1240px; }
     .grid > .card { grid-column: span 2; }
     .grid > .card:nth-child(4) { grid-column: 2 / span 2; }
     .card { display: flex; flex-direction: column; background: #fff; border-radius: 22px; overflow: hidden; box-shadow: 0 1px 0 rgba(0,0,0,.04), 0 24px 50px -30px rgba(40,30,60,.4); transition: transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s; }
@@ -32,37 +26,21 @@
     .shot img { width: 100%; height: 100%; object-fit: cover; object-position: top; transition: transform 1.2s cubic-bezier(.2,.8,.2,1); }
     .card:hover .shot img { transform: scale(1.04); }
     .body { padding: 24px 26px 26px; display: flex; flex-direction: column; flex: 1; }
-    .num { font: italic 300 15px 'Fraunces', serif; color: var(--muted); }
-    h2 { font: 500 28px/1.15 'Fraunces', serif; margin: 2px 0 10px; }
-    .body p { color: var(--muted); flex: 1; }
-    .meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0 20px; }
-    .meta span { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: #f3eee6; }
+    h2 { font: 500 28px/1.15 'Fraunces', serif; margin-bottom: 16px; }
     .swatches { display: flex; gap: 6px; }
     .swatches i { width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
     .go { display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
     .go b { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--ink); color: #fff; font-weight: 500; transition: transform .3s, background .3s; }
     .card:hover .go b { transform: translateX(4px); background: var(--red); }
-    footer { text-align: center; color: var(--muted); font-size: 14px; padding: 0 0 50px; }
-    footer a { border-bottom: 1px solid currentColor; }
     @media (max-width: 960px) { .grid { grid-template-columns: 1fr; max-width: 560px; margin: 0 auto; } .grid > .card, .grid > .card:nth-child(4) { grid-column: auto; } }
   </style>
 </head>
 <body>
-  <header class="wrap">
-    <img src="shared/img/mark.png" alt="Compassion Course Foundation" width="64" height="60">
-    <p class="eyebrow">compassioncf.com · redesign</p>
-    <h1>Five directions, <em>one hopeful message</em></h1>
-    <p>Each one is inspirational first and optimistic underneath, all built from the foundation’s own words. Pick one to explore the full page.</p>
-  </header>
-
   <main class="wrap grid">
     <a class="card" href="v1/">
       <div class="shot"><img src="shared/img/previews/v1.jpg" alt="Preview of the Dawn direction"></div>
       <div class="body">
-        <span class="num">Direction one</span>
         <h2>Dawn</h2>
-        <p>Night sky giving way to sunrise. The participant globe rises at the horizon, ringed by starlight and warm amber. Elegant serif type, quietly cinematic.</p>
-        <div class="meta"><span>Globe hero</span><span>Fraunces + DM Sans</span><span>Dark → light</span></div>
         <div class="go">
           <div class="swatches" aria-hidden="true"><i style="background:#0b1030"></i><i style="background:#4b2f6e"></i><i style="background:#f08a7a"></i><i style="background:#f6b860"></i><i style="background:#fff8ef"></i></div>
           <b aria-hidden="true">→</b>
@@ -73,10 +51,7 @@
     <a class="card" href="v2/">
       <div class="shot"><img src="shared/img/previews/v2.jpg" alt="Preview of the Morning Paper direction"></div>
       <div class="body">
-        <span class="num">Direction two</span>
         <h2>Morning Paper</h2>
-        <p>Editorial and typographic. Huge headlines on warm paper, a sun turning in the middle of the tagline, polaroid photos of real gatherings, and the globe set like a newspaper figure.</p>
-        <div class="meta"><span>Typographic hero · globe figure</span><span>Instrument Serif + Manrope</span><span>Light</span></div>
         <div class="go">
           <div class="swatches" aria-hidden="true"><i style="background:#f8f2e7"></i><i style="background:#1d1a17"></i><i style="background:#c8282d"></i><i style="background:#ffbf3c"></i><i style="background:#ffe0bd"></i></div>
           <b aria-hidden="true">→</b>
@@ -87,10 +62,7 @@
     <a class="card" href="v3/">
       <div class="shot"><img src="shared/img/previews/v3.jpg" alt="Preview of the Bright Horizon direction"></div>
       <div class="body">
-        <span class="num">Direction three</span>
         <h2>Bright Horizon</h2>
-        <p>Clear blue sky, sunshine and coral. The globe comes up like a sun with floating stats around it, then playful bento tiles and rounded cards. The most openly optimistic of the set.</p>
-        <div class="meta"><span>Globe hero</span><span>Bricolage + Figtree</span><span>Bright</span></div>
         <div class="go">
           <div class="swatches" aria-hidden="true"><i style="background:#8fd0ff"></i><i style="background:#0f2648"></i><i style="background:#ff6b5b"></i><i style="background:#ffd23f"></i><i style="background:#4fd1b5"></i></div>
           <b aria-hidden="true">→</b>
@@ -100,10 +72,7 @@
     <a class="card" href="v4/">
       <div class="shot"><img src="shared/img/previews/v4.jpg" alt="Preview of the Meridian direction"></div>
       <div class="body">
-        <span class="num">Direction four</span>
         <h2>Meridian</h2>
-        <p>Quiet, premium and editorial. A full-screen sunrise film behind white serif type, then ivory pages, deep ink and champagne-gold hairlines, with the globe in its own section. The most polished and institutional of the set.</p>
-        <div class="meta"><span>Video hero · globe section</span><span>Cormorant + Inter</span><span>~1.5 MB video</span></div>
         <div class="go">
           <div class="swatches" aria-hidden="true"><i style="background:#0e1a2b"></i><i style="background:#1b2a40"></i><i style="background:#b8915a"></i><i style="background:#ece6dc"></i><i style="background:#f7f4ee"></i></div>
           <b aria-hidden="true">→</b>
@@ -113,10 +82,7 @@
     <a class="card" href="v5/">
       <div class="shot"><img src="shared/img/previews/v5.jpg" alt="Preview of the Kindred direction"></div>
       <div class="body">
-        <span class="num">Direction five</span>
         <h2>Kindred</h2>
-        <p>Meridian’s polish with a human focus. The full-screen hero film is a montage of real people: a sunset gathering, friends in a circle, a group hug by the water. Then an editorial photo mosaic of the community with the globe beneath it, in warm terracotta and cream.</p>
-        <div class="meta"><span>People video hero · globe</span><span>Newsreader + Instrument Sans</span><span>~1.5 MB video</span></div>
         <div class="go">
           <div class="swatches" aria-hidden="true"><i style="background:#231a18"></i><i style="background:#c0603f"></i><i style="background:#e8b79f"></i><i style="background:#f1e9df"></i><i style="background:#faf6f0"></i></div>
           <b aria-hidden="true">→</b>
@@ -124,7 +90,5 @@
       </div>
     </a>
   </main>
-
-  <footer class="wrap">Concept prototypes. Links to programs, events and donations point to the live <a href="https://compassioncf.com/">compassioncf.com</a>.</footer>
 </body>
 </html>
