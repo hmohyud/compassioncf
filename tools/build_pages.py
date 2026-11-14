@@ -165,6 +165,7 @@ def page(path, title, desc, active, hero, body, n, extra_js='', home_link=False,
 
   {footer(r, news_href='#newsletter' if news else r + '#newsletter')}
 
+  <script type="module" src="{s}content.js"></script>
   <script type="module" src="{s}site.js"></script>
   <script type="module" src="{s}donate.js"></script>
   <script type="module" src="{s}forms.js"></script>{extra_js.replace('{r}', r).replace('{s}', s)}
@@ -747,6 +748,7 @@ HEAD_404 = r"""
       if ((m = path.match(/^\/programs\/([^\/]+)$/))) to = 'programs/' + (programs[m[1]] ? programs[m[1]] + '/' : '');
       else if ((m = path.match(/^\/blog\/([A-Za-z0-9_-]+)$/))) to = 'blog/post.html?id=' + encodeURIComponent(m[1]);
       else if ((m = path.match(/^\/v1(\/.*)?$/))) to = (m[1] || '/').slice(1);   // this site, while it was one of five designs under review
+      else if (/^\/admin\/.+/.test(path)) to = 'admin/';   // inner addresses of the previous admin panel
       else if (/^\/(home|v[2-5](\/.*)?)$/.test(path)) to = '';
       if (to != null) {
         document.documentElement.style.visibility = 'hidden';
@@ -778,6 +780,23 @@ notfound_body = f"""<section class="pbody">
       </div>
     </section>"""
 
+# ---------- the editor: sign-in, essays, events, inbox. Everything in it is drawn by shared/admin/app.js ----------
+
+admin_hero = phero('{r}', 'Editor', [], 'Site editor', 'Keep the site <em>current</em>',
+    lede='Sign in to write essays, add events, read messages, and change the wording on any page.')
+
+admin_body = """<section class="pbody">
+      <div class="wrap">
+        <div class="adm" data-admin-app>
+          <p class="adm-load">Loading the editor…</p>
+          <noscript><p class="adm-load">The editor needs JavaScript switched on in your browser.</p></noscript>
+        </div>
+      </div>
+    </section>"""
+
+ADMIN_JS = '\n  <script type="module" src="{s}admin/app.js"></script>'
+NOINDEX = '\n  <meta name="robots" content="noindex">'
+
 CMS_JS = '\n  <script type="module" src="{s}cms.js"></script>'
 
 PAGES = [
@@ -798,6 +817,7 @@ PAGES = [
 for i, (path, title, desc, active, hero, body, js) in enumerate(PAGES, start=2):
     page(path, title, desc, active, hero, body, i, js)
 
+page('admin/index.html', 'Site editor', 'Sign in to edit the Compassion Course Foundation website.', None, admin_hero, admin_body, 0, ADMIN_JS, head=NOINDEX, news=False)
 page('404.html', 'Page not found', 'This page could not be found.', None, notfound_hero, notfound_body, 0, SKIP_404, head=HEAD_404, news=False)
 
 # ---------- home page: written by hand, only its header and footer come from here ----------
