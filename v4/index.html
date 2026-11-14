@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Compassion Course Foundation | Peace education for everyone, everywhere</title>
+  <meta name="description" content="Compassion Course Foundation: Peace Education for Everyone, Everywhere, All at Once.">
+  <meta name="theme-color" content="#0e1a2b">
+  <link rel="icon" href="../shared/img/mark.png">
+  <link rel="preload" as="image" href="../shared/video/poster.jpg" media="(min-width: 701px)" fetchpriority="high">
+  <link rel="preload" as="image" href="../shared/video/poster-mobile.jpg" media="(max-width: 700px)" fetchpriority="high">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="hdr" data-header>
+    <div class="wrap hdr-in">
+      <a class="brand" href="#top" aria-label="Compassion Course Foundation home">
+        <img class="mark-light" src="../shared/img/mark-white.png" alt="" width="34" height="32">
+        <img class="mark-dark" src="../shared/img/mark.png" alt="" width="34" height="32">
+        <span>Compassion Course<small>Foundation</small></span>
+      </a>
+      <button class="burger" data-nav-toggle aria-controls="nav" aria-expanded="false" aria-label="Menu"><span></span><span></span></button>
+      <nav id="nav" class="nav" aria-label="Primary">
+        <a href="#mission">Mission</a>
+        <a href="#approach">Approach</a>
+        <a href="#programs">Programs</a>
+        <a href="#involved">Get Involved</a>
+        <a class="nav-cta" href="https://compassioncf.com/donate" data-donate>Donate</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO: full-screen video -->
+    <section class="hero" id="top">
+      <div class="hero-media" aria-hidden="true">
+        <picture>
+          <source media="(max-width: 700px)" srcset="../shared/video/poster-mobile.jpg">
+          <img class="hero-poster" src="../shared/video/poster.jpg" alt="" width="1600" height="900" fetchpriority="high" decoding="async">
+        </picture>
+        <video class="hero-video" muted playsinline loop preload="none" disablepictureinpicture data-webm="hero-720.webm" data-mp4="hero-720.mp4" data-mobile="hero-mobile.mp4"></video>
+      </div>
+      <div class="hero-shade" aria-hidden="true"></div>
+
+      <div class="wrap hero-content">
+        <p class="eyebrow hero-in" style="--d:.1s">Compassion Course Foundation</p>
+        <h1 class="hero-in" style="--d:.25s">A more peaceful world begins with <em>what we learn.</em></h1>
+        <p class="hero-sub hero-in" style="--d:.45s">Peace education for everyone, everywhere, all at once.</p>
+        <div class="hero-cta hero-in" style="--d:.6s">
+          <a class="btn btn-light" href="#mission">Discover our mission</a>
+          <a class="btn btn-line" href="https://compassioncf.com/donate" data-donate>Support the work</a>
+        </div>
+      </div>
+
+      <div class="wrap hero-foot">
+        <a class="scroll" href="#mission"><span class="scroll-line" aria-hidden="true"></span>Scroll</a>
+        <button class="vid-toggle" type="button" aria-pressed="false" hidden>
+          <svg class="i-pause" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="2.5" width="3" height="11" rx="1"/><rect x="9.5" y="2.5" width="3" height="11" rx="1"/></svg>
+          <svg class="i-play" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 2.8v10.4a.6.6 0 0 0 .9.5l8.3-5.2a.6.6 0 0 0 0-1L5.4 2.3a.6.6 0 0 0-.9.5z"/></svg>
+          <span class="vid-label">Pause video</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- MISSION -->
+    <section class="sec intro" id="mission">
+      <div class="wrap narrow reveal">
+        <p class="label">Our Mission</p>
+        <p class="statement">To foster compassion and understanding through educational programs and community initiatives that bring people together.</p>
+        <span class="rule" aria-hidden="true"></span>
+      </div>
+    </section>
+
+    <!-- REACH: the participant globe -->
+    <section class="sec reach" id="reach">
+      <div class="wrap reach-grid">
+        <div class="reach-copy reveal">
+          <p class="label light">Our Reach</p>
+          <h2>A community of practice that already <em>spans the world.</em></h2>
+          <p>Every point of light is a place where someone has taken the Compassion Course. Drag the globe to explore.</p>
+          <ul class="reach-stats">
+            <li><b data-count="3898">3,898</b><span>Places</span></li>
+            <li><b data-count="487">487</b><span>Regions</span></li>
+            <li><b>6</b><span>Continents</span></li>
+          </ul>
+        </div>
+        <div class="reach-globe reveal"><div id="globe"></div></div>
+      </div>
+    </section>
+
+    <!-- APPROACH -->
+    <section class="sec approach" id="approach">
+      <div class="wrap split">
+        <div class="reveal">
+          <p class="label">The Case for Peace Education</p>
+          <h2>Peace is most effectively built <em>before</em> conflict begins.</h2>
+        </div>
+        <div class="approach-body reveal">
+          <p>Communities are facing rising levels of polarization, stress, and conflict. While many efforts focus on resolving conflict after it has escalated, research across psychology, education, and peace studies consistently shows that peace is most effectively built by cultivating the skills, mindsets, and relationships that prevent conflict in the first place. This is the heart of peace education.</p>
+          <p>Peace education equips people with the ability to understand their own needs, communicate effectively, regulate emotions, and empathize across differences.</p>
+        </div>
+      </div>
+
+      <div class="wrap evidence">
+        <p class="ev-lead reveal">Studies from UNESCO, the Global Partnership for the Prevention of Armed Conflict, and numerous academic programs have affirmed that peace education contributes to:</p>
+        <ol class="ev">
+          <li class="reveal"><span class="ev-n">I</span><p>Reduced interpersonal and community violence</p></li>
+          <li class="reveal"><span class="ev-n">II</span><p>Improved emotional resilience and self-regulation</p></li>
+          <li class="reveal"><span class="ev-n">III</span><p>Greater social cohesion and empathy across cultures</p></li>
+          <li class="reveal"><span class="ev-n">IV</span><p>Increased capacity for collaboration and conflict transformation</p></li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- VISION -->
+    <section class="vision">
+      <figure class="vision-img">
+        <img src="../shared/img/friends-horizon.jpg" alt="Friends sitting side by side, arms around one another, looking out at the horizon" width="1200" height="675" loading="lazy" decoding="async">
+      </figure>
+      <div class="vision-copy reveal">
+        <p class="label light">Our Vision</p>
+        <blockquote>A world where compassion guides our interactions and creates positive change in communities everywhere.</blockquote>
+        <p>When people learn concrete tools for connection and compassion, they are better able to navigate differences, de-escalate tensions, and create environments where everyone’s needs matter.</p>
+      </div>
+    </section>
+
+    <!-- PROGRAMS -->
+    <section class="sec programs" id="programs">
+      <div class="wrap">
+        <div class="sec-head reveal">
+          <p class="label">Programs</p>
+          <h2>How the work reaches people</h2>
+        </div>
+        <div class="prog">
+          <article class="reveal">
+            <a href="https://compassioncf.com/programs">
+              <div class="prog-img"><img src="../shared/img/online.jpg" alt="An online class with many participants shown on a laptop" width="1500" height="844" loading="lazy" decoding="async"></div>
+              <p class="prog-n">01</p>
+              <h3>The Compassion Course</h3>
+              <p>A year-long online journey in compassionate communication, shared by learners in thousands of places worldwide.</p>
+              <span class="prog-more">Learn more</span>
+            </a>
+          </article>
+          <article class="reveal">
+            <a href="https://compassioncf.com/programs">
+              <div class="prog-img"><img src="../shared/img/gathering.jpg" alt="A community group gathered in a bright room" width="1600" height="1067" loading="lazy" decoding="async"></div>
+              <p class="prog-n">02</p>
+              <h3>Peace Education in Communities</h3>
+              <p>Practical skills for empathy, self-regulation and dialogue in schools, workplaces and neighbourhoods.</p>
+              <span class="prog-more">Learn more</span>
+            </a>
+          </article>
+          <article class="reveal">
+            <a href="https://compassioncf.com/programs">
+              <div class="prog-img"><img src="../shared/img/hands.jpg" alt="Many hands joined together in a circle" width="1500" height="1000" loading="lazy" decoding="async"></div>
+              <p class="prog-n">03</p>
+              <h3>Access for Everyone</h3>
+              <p>Scholarships and partnerships so peace education reaches everyone, everywhere, whatever their circumstances.</p>
+              <span class="prog-more">Learn more</span>
+            </a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- GET INVOLVED -->
+    <section class="sec involved" id="involved">
+      <div class="wrap">
+        <div class="sec-head center reveal">
+          <p class="label light">Get Involved</p>
+          <h2>Join us in making a difference.</h2>
+          <p>Whether through volunteering, donating, or participating in our programs.</p>
+        </div>
+        <div class="ways">
+          <a class="way reveal" href="https://compassioncf.com/donate" data-donate>
+            <h3>Donate</h3>
+            <p>Fund scholarships and community programs that make peace education possible.</p>
+            <span class="way-link">Make a gift <span aria-hidden="true">→</span></span>
+          </a>
+          <a class="way reveal" href="https://compassioncf.com/contact">
+            <h3>Volunteer</h3>
+            <p>Offer your time and expertise to a growing, global community of practice.</p>
+            <span class="way-link">Get in touch <span aria-hidden="true">→</span></span>
+          </a>
+          <a class="way reveal" href="https://compassioncf.com/programs">
+            <h3>Participate</h3>
+            <p>Learn the skills of compassion and bring them home to the people around you.</p>
+            <span class="way-link">Explore programs <span aria-hidden="true">→</span></span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- NEWSLETTER -->
+    <section class="news" id="newsletter">
+      <div class="wrap news-in reveal">
+        <div>
+          <p class="label">Newsletter</p>
+          <h2>Stay close to the work.</h2>
+        </div>
+        <form class="news-form" data-demo-form>
+          <label class="sr" for="email4">Email address</label>
+          <input id="email4" type="email" required placeholder="Email address" autocomplete="email">
+          <button type="submit">Subscribe</button>
+          <p class="form-msg" data-form-msg role="status"></p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="ftr">
+    <div class="wrap ftr-grid">
+      <div>
+        <a class="brand" href="#top"><img src="../shared/img/mark-white.png" alt="" width="34" height="32"><span>Compassion Course<small>Foundation</small></span></a>
+        <p class="ftr-tag">Peace Education for Everyone, Everywhere, All at Once.</p>
+        <div class="social">
+          <h4>Follow Thom Bond</h4>
+          <ul>
+            <li><a href="https://www.instagram.com/fromthombond/" target="_blank" rel="noopener" title="Instagram" aria-label="Thom Bond on Instagram"><svg aria-hidden="true"><use href="../shared/img/social.svg#instagram"/></svg></a></li>
+            <li><a href="https://www.facebook.com/ThomBondOfficial/" target="_blank" rel="noopener" title="Facebook" aria-label="Thom Bond on Facebook"><svg aria-hidden="true"><use href="../shared/img/social.svg#facebook"/></svg></a></li>
+            <li><a href="https://x.com/BondThom" target="_blank" rel="noopener" title="X" aria-label="Thom Bond on X"><svg aria-hidden="true"><use href="../shared/img/social.svg#x"/></svg></a></li>
+            <li><a href="https://www.youtube.com/channel/UCewGakK8ofm6z8ZwMkYRIIA" target="_blank" rel="noopener" title="YouTube" aria-label="Thom Bond on YouTube"><svg aria-hidden="true"><use href="../shared/img/social.svg#youtube"/></svg></a></li>
+            <li><a href="https://thombond.buzzsprout.com/" target="_blank" rel="noopener" title="Engineering Peace podcast" aria-label="Engineering Peace, Thom Bond’s podcast"><svg aria-hidden="true"><use href="../shared/img/social.svg#podcast"/></svg></a></li>
+          </ul>
+        </div>
+      </div>
+      <nav aria-label="Foundation">
+        <h4>Foundation</h4>
+        <a href="https://compassioncf.com/about">About Us</a>
+        <a href="https://compassioncf.com/board">Board Members</a>
+        <a href="https://compassioncf.com/blog">Blog</a>
+      </nav>
+      <nav aria-label="Programs">
+        <h4>Programs</h4>
+        <a href="https://compassioncf.com/programs">Programs</a>
+        <a href="https://compassioncf.com/events">Events</a>
+      </nav>
+      <nav aria-label="Get involved">
+        <h4>Get Involved</h4>
+        <a href="https://compassioncf.com/donate" data-donate>Donate</a>
+        <a href="#newsletter">Newsletter</a>
+        <a href="https://compassioncf.com/contact">Contact Us</a>
+      </nav>
+    </div>
+    <div class="wrap ftr-base">
+      <span>© <span data-year>2026</span> Compassion Course Foundation, Inc. All rights reserved.</span>
+      <span>Hero footage: Pexels</span>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { lazyGlobe } from '../shared/globe-lazy.js';
+    lazyGlobe(document.getElementById('globe'), { marker: '226,190,130', hover: '255,236,200', maxSize: 600 });
+  </script>
+  <script type="module" src="../shared/video-hero.js"></script>
+  <script type="module" src="../shared/site.js"></script>
+  <script type="module" src="../shared/donate.js"></script>
+</body>
+</html>
