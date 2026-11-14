@@ -1,8 +1,8 @@
 # Compassion Course Foundation website
 
-The new website for [compassioncf.com](https://compassioncf.com/), in the "Dawn" design: a night sky giving way to sunrise, set in Fraunces and DM Sans. It is a static site. The repository root is the site root.
+The website at [compassioncf.com](https://compassioncf.com/), in the "Dawn" design: a night sky giving way to sunrise, set in Fraunces and DM Sans. It is a static site served by GitHub Pages. The repository root is the site root.
 
-Preview, until the domain points here: https://hmohyud.github.io/compassioncf/
+The old address, https://hmohyud.github.io/compassioncf/, redirects to the domain.
 
 ## Pages
 
@@ -54,12 +54,16 @@ python -m http.server 8765
 
 Pushing to `main` runs `.github/workflows/deploy.yml`, which publishes the output of `tools/assemble.sh` to the `gh-pages` branch. GitHub Pages serves that branch.
 
-## Going live at compassioncf.com
+## The domain
 
-Not done yet. If the site stays on GitHub Pages:
+The domain was pointed at this site on 14 November 2026.
 
-1. Add a line to `tools/assemble.sh` that writes `compassioncf.com` into a file named `CNAME` in the output folder, and set the same custom domain in the repository's Pages settings. Do this only when the DNS is about to change: once it is set, the preview address redirects to the domain.
-2. Point the domain's DNS at GitHub Pages: the four `A` records for the bare domain and a `CNAME` from `www` to `hmohyud.github.io`. Leave the mail (`MX`) records as they are. The domain is registered at Directnic, but its records are served by Google Cloud DNS, so this needs access to that zone or a move of the nameservers.
-3. Check `compassioncf.com/donate?success=true`, an old program address and an old essay address.
+- **GitHub Pages** serves it as a custom domain. `tools/assemble.sh` writes the `CNAME` file Pages needs into every deploy; without it Pages drops the domain.
+- **DNS** is hosted at Directnic, where the domain is registered (nameservers `ns0` to `ns3.directnic.com`). The records there:
+  - four `A` records for the bare domain: `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153` (GitHub Pages)
+  - a `CNAME` from `www` to `hmohyud.github.io`
+  - five `MX` records for Google mail, and two `TXT` records carried over from the previous setup
+- Directnic serves these with a one-day caching time, so a change to them takes up to a day to reach everyone.
+- **To go back to the previous site**, replace the four `A` records with a single one for `199.36.158.100` (Firebase Hosting, where the previous site still runs).
 
-After the switch, `compassioncf.com/admin` shows this site's not-found page; the admin panel is at the `web.app` address above.
+`compassioncf.com/admin` now shows this site's not-found page; the admin panel is at the `web.app` address above.

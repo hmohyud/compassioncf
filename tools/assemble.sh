@@ -17,6 +17,8 @@ git ls-files -z --cached --others --exclude-standard -- . \
     ':!:.github' ':!:.gitignore' ':!:README.md' ':!:tools' \
   | xargs -0 cp --parents -t "$out"
 
-touch "$out/.nojekyll"   # GitHub Pages: serve the files as they are
+touch "$out/.nojekyll"                    # GitHub Pages: serve the files as they are
+echo "compassioncf.com" > "$out/CNAME"    # GitHub Pages: the site's own domain. Without this
+                                          # file in every deploy, Pages drops the custom domain.
 
 echo "Assembled $(find "$out" -type f | wc -l) files in $out"
