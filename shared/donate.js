@@ -1,16 +1,24 @@
 // Donate dialog: compassioncf.com's donation options (currency, preset or custom amount) on the page itself.
 //
-// Any element with [data-donate] opens it. Keep those links' href pointing at compassioncf.com/donate,
-// so they still work if this script doesn't load. "Donate" calls the same Firebase function the live
-// donate page uses (createCheckoutSession, project compassioncf-web-site, amount in whole currency units)
-// and sends the donor to the Stripe checkout page it returns. Card details are only ever entered there.
+// Any element with [data-donate] opens it. Give those links an href to the donate page (donate/),
+// so they still lead somewhere useful if this script doesn't load. An element with
+// [data-donate-auto] opens the dialog as soon as its page loads, which is what the donate page does. "Donate" calls the foundation's Firebase function
+// (createCheckoutSession, project compassioncf-web-site, amount in whole currency units) and sends
+// the donor to the Stripe checkout page it returns. Card details are only ever entered there.
 //
-// Themed per page through CSS variables (--dn-bg, --dn-ink, --dn-muted, --dn-line, --dn-accent, --dn-sans,
+// Stripe sends donors back to compassioncf.com/donate with ?success=true or ?canceled=true, which
+// is this site's donate page once the site is served at that domain.
+//
+// Themed through CSS variables (--dn-bg, --dn-ink, --dn-muted, --dn-line, --dn-accent, --dn-sans,
 // --dn-title-font, --dn-radius, --dn-chip-radius, --dn-btn-bg, --dn-btn-ink, --dn-btn-font, --dn-btn-track,
 // --dn-btn-case, --dn-btn-radius, --dn-scrim).
 
 const CHECKOUT_FN = 'https://us-central1-compassioncf-web-site.cloudfunctions.net/createCheckoutSession';
 const LIVE_PAGE = 'https://compassioncf.com/donate';
+// While this site is still at its preview address, a failed call can point people to the donate
+// page of the site currently at compassioncf.com. Once this site is the one served there, that link
+// would only lead back here, so it is dropped.
+const ON_LIVE_SITE = /(^|\.)compassioncf\.com$/i.test(location.hostname);
 const CURRENCIES = [
   { code: 'USD', symbol: '$', stripe: 'usd', min: 0.5 },
   { code: 'EUR', symbol: '€', stripe: 'eur', min: 0.5 },
@@ -156,7 +164,7 @@ function render() {
 function error(msg, withLink) {
   ui.err.hidden = !msg;
   ui.err.textContent = msg || '';
-  if (msg && withLink) {
+  if (msg && withLink && !ON_LIVE_SITE) {
     const a = Object.assign(document.createElement('a'), { href: LIVE_PAGE, target: '_blank', rel: 'noopener', textContent: 'donate on compassioncf.com' });
     ui.err.append(' You can also ', a, '.');
   }
@@ -213,12 +221,13 @@ document.addEventListener('click', (e) => {
 // Coming back from Stripe: the browser may restore this page with the button still busy.
 window.addEventListener('pageshow', () => { if (busy) setBusy(false); });
 
-// Stripe's return links (if they land on this page) carry ?success=true or ?canceled=true.
+// Stripe's return links carry ?success=true or ?canceled=true.
 const params = new URLSearchParams(location.search);
 if (params.get('success') === 'true' || params.get('canceled') === 'true') {
   const ok = params.get('success') === 'true';
   history.replaceState({}, '', location.pathname + location.hash);
   open(ok ? 'done' : 'form');
   if (!ok) error('Payment was canceled. You can try again anytime.');
+} else if (location.hash === '#donate' || document.querySelector('[data-donate-auto]')) {
+  open();
 }
-if (location.hash === '#donate') open();

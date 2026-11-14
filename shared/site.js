@@ -1,9 +1,8 @@
-// Small shared behaviours for all three design directions.
+// Small behaviours every page shares.
 // - .reveal elements fade/slide in when scrolled into view
 // - [data-count] numbers count up once visible
 // - header gets .scrolled after leaving the top
 // - [data-nav-toggle] opens/closes the mobile menu
-// - forms with [data-demo-form] show an inline thank-you (no backend in this prototype)
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -19,7 +18,7 @@ document.querySelectorAll('.reveal, [data-count]').forEach((el) => io.observe(el
 
 // Counting numbers keep the final value's footprint, so the words around them stay still:
 // digits are tabular (equal width), and while counting the number sits in a box fixed at
-// its final width, filling in from the right like an odometer. A version can override the
+// its final width, filling in from the right like an odometer. The stylesheet can override the
 // alignment with a more specific rule, e.g. `.facts b.counting { text-align: center }`.
 const countCss = document.createElement('style');
 countCss.textContent = '[data-count]{font-variant-numeric:tabular-nums}.counting{display:inline-block;white-space:nowrap;text-align:right}';
@@ -62,16 +61,6 @@ document.querySelectorAll('[data-nav-toggle]').forEach((btn) => {
     btn.setAttribute('aria-expanded', 'false');
     nav.classList.remove('open');
   }));
-});
-
-document.querySelectorAll('[data-demo-form]').forEach((form) => {
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const msg = form.querySelector('[data-form-msg]');
-    form.classList.add('sent');
-    if (msg) msg.textContent = 'Thank you — you’re on the list. (Demo form: nothing was sent yet.)';
-    form.reset();
-  });
 });
 
 document.querySelectorAll('[data-year]').forEach((el) => { el.textContent = new Date().getFullYear(); });

@@ -1,6 +1,6 @@
 // Live content from the foundation's own database: the public Firestore collections
-// compassioncf.com reads (blogPosts, events), fetched over Firestore's REST API, so new
-// essays and events published from the foundation's admin show up here too.
+// the foundation's admin panel writes to (blogPosts, events), fetched over Firestore's REST API,
+// so new essays and events published there show up here without editing this site.
 //
 // Pages opt in with a data-cms attribute:
 //   [data-cms="blog-list"]  cards into [data-posts]; data-href (link prefix, default "post.html?id="),
@@ -9,10 +9,9 @@
 //   [data-cms="blog-post"]  reads ?id= and fills the [data-post-*] slots
 //   [data-cms="events"]     upcoming events into [data-events-list], else shows [data-events-empty]
 //
-// No API key is sent: these collections are publicly readable, as they are for the live site.
+// No API key is sent: these collections are publicly readable.
 
 const DB = 'https://firestore.googleapis.com/v1/projects/compassioncf-web-site/databases/(default)/documents';
-const LIVE = 'https://compassioncf.com';
 
 /* ---------- Firestore REST ---------- */
 
@@ -223,7 +222,7 @@ async function blogPost(el) {
     slot('title').textContent = 'This essay couldn’t be loaded';
     slot('sub').hidden = true;
     slot('by').textContent = '';
-    slot('body').innerHTML = `<p class="cms-note">It may have moved, or the connection dropped. You can <a href="${esc(id ? `${LIVE}/blog/${encodeURIComponent(id)}` : `${LIVE}/blog`)}">read it on compassioncf.com</a> or return to <a href="./">all essays</a>.</p>`;
+    slot('body').innerHTML = '<p class="cms-note">It may have moved, or the connection dropped. Please try again in a moment, or return to <a href="./">all essays</a>.</p>';
   }
 }
 

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Copies the files that make up the website into a folder to publish: everything in the
+# repository except the files only the repository needs (this folder, the README, the
+# GitHub workflow). Used by .github/workflows/deploy.yml, and handy for testing the exact
+# published site locally.
+#
+#   bash tools/assemble.sh [out-dir]      (default: _site, which git ignores)
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+out="${1:-_site}"
+rm -rf "$out"
+mkdir -p "$out"
+
+# Tracked files plus new ones not yet committed; ignored files (_reference/, _site/) are skipped.
+git ls-files -z --cached --others --exclude-standard -- . \
+    ':!:.github' ':!:.gitignore' ':!:README.md' ':!:tools' \
+  | xargs -0 cp --parents -t "$out"
+
+touch "$out/.nojekyll"   # GitHub Pages: serve the files as they are
+
+echo "Assembled $(find "$out" -type f | wc -l) files in $out"
