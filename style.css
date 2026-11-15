@@ -38,8 +38,12 @@ em { font-style: italic; }
 .btn-ghost:hover { background: rgba(255,255,255,.14); transform: translateY(-2px); }
 
 /* ---------- header ---------- */
-.hdr { position: fixed; inset: 0 0 auto; z-index: 50; transition: background .35s, box-shadow .35s, padding .35s; padding: 18px 0; }
-.hdr.scrolled { background: rgba(11, 16, 48, .78); backdrop-filter: blur(16px) saturate(1.3); box-shadow: 0 1px 0 rgba(255,255,255,.08); padding: 10px 0; }
+.hdr { position: fixed; inset: 0 0 auto; z-index: 50; transition: box-shadow .35s, padding .35s; padding: 18px 0; }
+/* The frosted background is a layer of its own. A backdrop-filter on .hdr itself would make the header
+   the frame for the phone menu (position: fixed), squeezing the open menu into the header's box. */
+.hdr::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: rgba(11, 16, 48, .78); backdrop-filter: blur(16px) saturate(1.3); opacity: 0; transition: opacity .35s; }
+.hdr.scrolled { box-shadow: 0 1px 0 rgba(255,255,255,.08); padding: 10px 0; }
+.hdr.scrolled::before { opacity: 1; }
 .hdr-in { display: flex; align-items: center; justify-content: space-between; }
 .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff; font: 600 18px/1.05 var(--serif); }
 .brand small { display: block; font: 600 10px var(--sans); letter-spacing: .32em; text-transform: uppercase; opacity: .7; margin-top: 3px; }
@@ -253,6 +257,10 @@ em { font-style: italic; }
 /* page body: picks up the sunrise where the hero leaves it */
 .pbody { position: relative; background: linear-gradient(180deg, #f3a575 0, #fbd9b9 120px, var(--cream) 380px); padding: 84px 0 clamp(90px, 11vw, 140px); }
 .pbody.paper { background: linear-gradient(180deg, #f3a575 0, #fbd9b9 120px, var(--paper) 380px); }
+/* a page with no hero (the editor): nothing dark sits behind the header, so it is always solid, and the body starts right under it */
+.no-hero .hdr { background: var(--night); box-shadow: 0 1px 0 rgba(255, 255, 255, .08); padding: 10px 0; }
+.no-hero .hdr::before { display: none; }
+.no-hero .pbody { background: linear-gradient(180deg, #fbd9b9 0, var(--cream) 240px); padding: 92px 0 72px; }
 .sec-head.split { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px 40px; flex-wrap: wrap; max-width: none; }
 .sec-head.split .more { margin: 0 0 8px; }
 

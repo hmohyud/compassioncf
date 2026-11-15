@@ -32,10 +32,13 @@ Nothing below needs this repository or a deploy. Changes show for visitors as so
    - **Events**: add, change or remove events. Past events leave the Events page by themselves.
    - **Inbox**: messages from the Contact page and notes from the Volunteer page, with a reply-by-email button.
    - **Newsletter**: the sign-up list, to copy or download.
-   - **Page text**: every wording change made on the pages, each with a button to put the original back.
-3. While signed in, every page of the site shows a bar at the bottom. **Edit this page** outlines the text; click any of it, type, and press **Save**. **Cancel** throws unsaved changes away, and **Use the original wording** restores a sentence. A sentence that appears on every page, such as the footer line, is changed everywhere at once.
+   - **Text and photos**: every wording change and swapped photo on the pages, each with a button to put the original back.
+3. While signed in, every page of the site shows a bar at the bottom. **Edit this page** outlines the text and labels each photo.
+   - **Text**: click any of it and type. **Use the original wording** restores a sentence. A sentence that appears on every page, such as the footer line, is changed everywhere at once.
+   - **Photos**: click a photo (or its **Change photo** label) and choose a picture from your computer or phone. It is resized, uploaded and shown in place, with a box to describe it for people who can't see it. Click a swapped photo again to choose another or to **Use the original photo**. A photo used on several pages is swapped on all of them. A new photo is cropped to the same shape as the one it replaces.
+   - Press **Save** to publish the changes, or **Cancel** to throw them away.
 
-What "Edit this page" does not change: the menu, the forms, photographs, the numbers beside the globe, and adding or removing whole sections, board members or programs. Those are changes to the code (see below).
+What "Edit this page" does not change: the menu, the forms, the logo, the numbers beside the globe, and adding or removing whole sections, board members or programs. Those are changes to the code (see below).
 
 ## How it is put together
 
@@ -47,8 +50,8 @@ What "Edit this page" does not change: the menu, the forms, photographs, the num
 - `shared/cms.js`: reads essays and events from the foundation's database. Pages opt in with `data-cms="blog-list" | "blog-post" | "events"`. It renders the essays' Markdown safely and shows an empty state if the read fails.
 - `shared/forms.js`: sends the contact, volunteer and newsletter forms (`data-form="contact" | "volunteer" | "newsletter"`).
 - `shared/donate.js`: the donate dialog that every `[data-donate]` link opens (currency, $25 to $500 presets, custom amount), themed with the `--dn-*` variables in `style.css`.
-- `shared/content.js`: loaded by every page. It puts the wording changes editors have saved on top of the text built into the page, and loads the editor's bar in a browser that has signed in.
-- `shared/admin/`: the editor. `session.js` signs in and sends database requests as the signed-in person, `bar.js` is the bar and click-to-edit on the pages, `app.js` draws the `/admin/` screens, `admin.css` styles both. Visitors never load these.
+- `shared/content.js`: loaded by every page. It puts the wording changes and swapped photos editors have saved on top of what is built into the page, and loads the editor's bar in a browser that has signed in.
+- `shared/admin/`: the editor. `session.js` signs in and sends database and file-storage requests as the signed-in person, `bar.js` is the bar and click-to-edit on the pages, `app.js` draws the `/admin/` screens, `admin.css` styles both. Visitors never load these.
 - `shared/img/`: the logo marks, photographs and the social icon sprite.
 - `tools/assemble.sh`: copies the site's files, without the repository-only ones, into a folder to publish.
 - `_reference/` (on disk only, ignored by git): an export of the previous site.
@@ -62,8 +65,19 @@ Everything live runs in the foundation's Firebase project, `compassioncf-web-sit
 - **Donations** call the `createCheckoutSession` function, which returns a Stripe Checkout address. Stripe returns donors to `compassioncf.com/donate` with `?success=true` or `?canceled=true`.
 - **The editor** signs in through Firebase Authentication (email and password) with the foundation's existing admin accounts, and reads and writes the same collections with that person's sign-in. An account counts as an editor the way it did in the previous panel: an `admin` claim, or a document `admins/<user id>` with `role: "admin"`. This code only decides what to show; what an account may actually change is decided by the database's rules.
   - Wording changes are kept in one field, `siteText`, of the existing document `content/home`: a JSON object of `{ "<key>": "<html>" }`, where the key is a hash of the sentence as it is written in the page's HTML. If that sentence is later changed in the code, the saved change no longer matches and is dropped. Saved text is stripped to plain inline markup (emphasis, links, line breaks) both when it is saved and when it is shown.
+  - Swapped photos are kept the same way in a second field, `siteImages`: `{ "<which photo>": { "src": "<address of the new file>", "alt": "<description>" } }`, where a photo is named by its path in this site (`shared/img/hands.jpg`) or, for a picture the page loads from elsewhere, by its full address. The new file goes to the project's Firebase Storage, in `board-photos/`, the folder the previous admin panel uploads board photos to and so the one its rules are known to accept. Before upload the browser redraws the picture as a JPEG at most 2000 pixels on its longer side, which also removes the camera's location and date notes. The site only ever shows a swapped photo whose address is in that storage.
   - The project's web API key is not in this repository. The sign-in page reads it when someone signs in from `https://compassioncf-web-site.web.app/__/firebase/init.js`, so sign-in needs the previous site to stay up at that address.
 - **The previous admin panel** still works on the same data at https://compassioncf-web-site.web.app/admin. Its board, programs and home-content sections edit records this site does not read.
+
+## Security, in short
+
+- The site is static files, so there is no server of ours to break into. The editor's code is public and holds no secrets.
+- Firebase Authentication checks the sign-in. What a signed-in account may read or change is decided by the security rules of the Firebase project (Firestore and Storage), not by this code. **Those rules are the lock.** Nobody working on this repository has seen them; have them reviewed, and again whenever the editor learns to do something new.
+- Checked from outside on 15 November 2026: someone who is not signed in is refused the inbox (`contactSubmissions`), the mailing list (`newsletterSubscriptions`) and the admin list (`admins`).
+- Anything the public types into a form is shown in the editor as plain text, never as markup, and the newsletter download leaves out whatever is not a plain email address. Wording and photos saved by editors are filtered again when visitors' pages show them, so a stolen editor login could change content but could not run code in visitors' browsers.
+- The editor does not start inside a frame on another page.
+- When someone signs in, the editor loads one small settings file from the previous site (see above). Whoever controls that Firebase project controls that file.
+- What only people can do: use a strong password that is used nowhere else (password sign-in has no second step); sign out on a shared computer, because a browser stays signed in until then; and turn on two-step verification for the GitHub account (it controls the site's code), for Directnic (the domain) and for the Google account that owns the Firebase project.
 
 ## Working on it
 

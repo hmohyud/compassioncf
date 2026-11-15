@@ -132,10 +132,11 @@ def facts(items, cap='', count=False):
     cap_html = f'<p class="facts-cap">{cap}</p>' if cap else ''
     return f'\n          <div class="facts-block"><ul class="facts">{lis}</ul>{cap_html}</div>'
 
-def page(path, title, desc, active, hero, body, n, extra_js='', home_link=False, head='', news=True):
+def page(path, title, desc, active, hero, body, n, extra_js='', home_link=False, head='', news=True, body_class=''):
     depth = path.count('/')  # 'about/index.html' -> 1
     r = '../' * depth
     s = r + 'shared/'
+    body_attr = f' class="{body_class}"' if body_class else ''
     html = f'''<!DOCTYPE html>
 <!-- Built by tools/build_pages.py. Change this page there and run it; edits made here are overwritten. -->
 <html lang="en">
@@ -150,7 +151,7 @@ def page(path, title, desc, active, hero, body, n, extra_js='', home_link=False,
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=DM+Sans:opsz,wght@9..40,400..700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{r}style.css">
 </head>
-<body>
+<body{body_attr}>
   <a class="skip" href="#main">Skip to content</a>
 
   {header(r, active)}
@@ -782,11 +783,11 @@ notfound_body = f"""<section class="pbody">
 
 # ---------- the editor: sign-in, essays, events, inbox. Everything in it is drawn by shared/admin/app.js ----------
 
-admin_hero = phero('{r}', 'Editor', [], 'Site editor', 'Keep the site <em>current</em>',
-    lede='Sign in to write essays, add events, read messages, and change the wording on any page.')
-
+# This page is a tool, so it has no hero: the "no-hero" body class makes the header solid and starts
+# the editor right under it. The heading is there for screen readers only.
 admin_body = """<section class="pbody">
       <div class="wrap">
+        <h1 class="sr" data-no-edit>Site editor</h1>
         <div class="adm" data-admin-app>
           <p class="adm-load">Loading the editor…</p>
           <noscript><p class="adm-load">The editor needs JavaScript switched on in your browser.</p></noscript>
@@ -817,7 +818,7 @@ PAGES = [
 for i, (path, title, desc, active, hero, body, js) in enumerate(PAGES, start=2):
     page(path, title, desc, active, hero, body, i, js)
 
-page('admin/index.html', 'Site editor', 'Sign in to edit the Compassion Course Foundation website.', None, admin_hero, admin_body, 0, ADMIN_JS, head=NOINDEX, news=False)
+page('admin/index.html', 'Site editor', 'Sign in to edit the Compassion Course Foundation website.', None, '', admin_body, 0, ADMIN_JS, head=NOINDEX, news=False, body_class='no-hero')
 page('404.html', 'Page not found', 'This page could not be found.', None, notfound_hero, notfound_body, 0, SKIP_404, head=HEAD_404, news=False)
 
 # ---------- home page: written by hand, only its header and footer come from here ----------

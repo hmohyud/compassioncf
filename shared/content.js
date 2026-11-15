@@ -1,4 +1,4 @@
-// Text edits made in the site's editor, applied on top of the text built into each page.
+// Changes made in the site's editor, applied on top of the text and photos built into each page.
 //
 // An editor signed in at /admin/ can click any text on the site and change it. Those edits are kept in
 // the foundation's database as one small JSON object, { "<key>": "<html>" }, and applied here for every
@@ -9,19 +9,30 @@
 // Only simple inline markup survives (emphasis, links, line breaks). Everything else is stripped, when an
 // edit is saved and again here before it is shown, so the stored text can never inject anything else.
 //
+// Photos work the same way: { "<which photo>": { "src": "<address of the new file>", "alt": "<description>" } }.
+// A photo is known by where its file lives, so one photo used on several pages is swapped on all of them.
+// A new file is only ever shown if it is in the foundation's own file storage.
+//
 // The editor's own code (shared/admin/) is loaded only in a browser that has signed in.
 
 const DB = 'https://firestore.googleapis.com/v1/projects/compassioncf-web-site/databases/(default)/documents';
 export const TEXT_DOC = 'content/home';   // an existing document: public to read, writable by admin accounts
-export const TEXT_FIELD = 'siteText';     // one string field holding the JSON object
-const CACHE = 'ccf-text';                 // last known edits, so returning visitors don't see the old text first
+export const TEXT_FIELD = 'siteText';     // one string field holding the JSON object of text edits
+export const IMAGE_FIELD = 'siteImages';  // another, holding the JSON object of swapped photos
+export const STORAGE = 'https://firebasestorage.googleapis.com/v0/b/compassioncf-web-site.firebasestorage.app/o/';
+const CACHE = 'ccf-text';                 // last known changes, so returning visitors don't see the old page first
+const IMAGE_CACHE = 'ccf-images';
 const SESSION = 'ccf-admin';
+const ROOT = new URL('../', import.meta.url);   // the site's own root, wherever it is being served from
 
 /* ---------- which text can be edited ---------- */
 
 // Left alone: navigation, forms, anything a script fills in, decorative or generated bits.
+// That includes the globe (.g-wrap), whose place label keeps changing by itself, and any other
+// status line a script writes to: text that changes on its own would look like an edit.
 const SKIP = [
   'script', 'style', 'noscript', 'svg', 'nav', 'form', 'dialog', '.brand', '.skip', '.cms-note',
+  '.g-wrap', '[role="status"]', '[role="alert"]', '[aria-live]',
   '[aria-hidden="true"]', '[data-count]', '[data-year]', '[data-no-edit]', '[data-admin-app]',
   '[data-posts]', '[data-events-list]', '[data-events-loading]', '[data-events-note]',
   '[data-post-title]', '[data-post-sub]', '[data-post-by]', '[data-post-body]',
@@ -124,39 +135,93 @@ export function apply(edits = {}) {
   }
 }
 
-const readCache = () => { try { return JSON.parse(localStorage.getItem(CACHE)) || {}; } catch { return {}; } };
-export function remember(edits) { try { localStorage.setItem(CACHE, JSON.stringify(edits)); } catch { /* private window */ } }
+/* ---------- photos ---------- */
 
-// The edits as they are in the database right now. Throws if they can't be read.
-export async function fetchEdits() {
-  const res = await fetch(`${DB}/${TEXT_DOC}?mask.fieldPaths=${TEXT_FIELD}`);
-  if (res.status === 404) return {};
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const doc = await res.json();
-  const raw = doc.fields?.[TEXT_FIELD]?.stringValue;
-  if (!raw) return {};
-  const parsed = JSON.parse(raw);
-  return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+// Photographs in the page body. Logos, and anything a script draws, are left alone.
+const IMAGE_SKIP = 'nav, form, dialog, .brand, .news-in, .g-wrap, [data-admin-app], [data-no-edit], [data-posts], [data-post-body], [data-events-list]';
+
+// Which photo this is: its path inside this site ("shared/img/hands.jpg"), or the full address of a file kept elsewhere.
+export function imageKey(src) {
+  const url = new URL(src, document.baseURI);
+  url.hash = '';
+  return url.origin === ROOT.origin && url.pathname.startsWith(ROOT.pathname) ? url.pathname.slice(ROOT.pathname.length) : url.href;
 }
 
-export let edits = readCache();
-apply(edits);
+// Every photo on this page that can be swapped, with the file and description it has in the page's own HTML.
+export const imageEntries = [...document.querySelectorAll('main img[src]')]
+  .filter((el) => !el.closest(IMAGE_SKIP))
+  .map((el) => ({ el, key: imageKey(el.getAttribute('src')), src: el.getAttribute('src'), alt: el.getAttribute('alt') || '', edited: false }));
 
-// Used by the editor after it saves: show the new set of edits and keep it for the next visit.
+// A swap counts only if its file is in the foundation's storage; anything else in the database is ignored.
+export const isStored = (swap) => !!swap && typeof swap.src === 'string' && swap.src.startsWith(STORAGE);
+
+// A photo with no description in the page is decoration there (its caption is beside it), and stays that way.
+export const describe = (entry, swap) => (entry.alt && swap && typeof swap.alt === 'string' && swap.alt.trim() ? swap.alt.trim() : entry.alt);
+
+export function show(entry, src, alt) {
+  if (entry.el.getAttribute('src') !== src) entry.el.setAttribute('src', src);
+  if ((entry.el.getAttribute('alt') || '') !== alt) entry.el.setAttribute('alt', alt);
+}
+
+export function applyImages(swaps = {}) {
+  for (const entry of imageEntries) {
+    const swap = isStored(swaps[entry.key]) ? swaps[entry.key] : null;
+    show(entry, swap ? swap.src : entry.src, describe(entry, swap));
+    entry.edited = !!swap;
+  }
+}
+
+/* ---------- reading what editors have saved ---------- */
+
+const readCache = (name) => { try { return JSON.parse(localStorage.getItem(name)) || {}; } catch { return {}; } };
+const remember = (name, value) => { try { localStorage.setItem(name, JSON.stringify(value)); } catch { /* private window */ } };
+const parseMap = (raw) => {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+// The text edits and swapped photos as they are in the database right now. Throws if they can't be read.
+export async function fetchChanges() {
+  const res = await fetch(`${DB}/${TEXT_DOC}?mask.fieldPaths=${TEXT_FIELD}&mask.fieldPaths=${IMAGE_FIELD}`);
+  if (res.status === 404) return { edits: {}, images: {} };
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const doc = await res.json();
+  return { edits: parseMap(doc.fields?.[TEXT_FIELD]?.stringValue), images: parseMap(doc.fields?.[IMAGE_FIELD]?.stringValue) };
+}
+export const fetchEdits = async () => (await fetchChanges()).edits;
+
+export let edits = readCache(CACHE);
+export let images = readCache(IMAGE_CACHE);
+apply(edits);
+applyImages(images);
+
+// Used by the editor after it saves: show the new set of changes and keep it for the next visit.
 export function setEdits(next) {
   edits = next;
   apply(edits);
-  remember(edits);
+  remember(CACHE, edits);
+}
+export function setImages(next) {
+  images = next;
+  applyImages(images);
+  remember(IMAGE_CACHE, images);
 }
 
-export const ready = fetchEdits()
-  .then(setEdits)
-  .catch((err) => console.warn('[content] edits not loaded:', err.message));
+export const ready = fetchChanges()
+  .then((now) => { setEdits(now.edits); setImages(now.images); })
+  .catch((err) => console.warn('[content] changes not loaded:', err.message));
 
 /* ---------- the editor, for a signed-in browser only ---------- */
 
 let signedIn = false;
+let framed = true;   // inside another page's frame the editor stays off: the page around it could disguise what is clicked
 try { signedIn = !!localStorage.getItem(SESSION); } catch { /* private window */ }
-if (signedIn && !document.querySelector('[data-admin-app]')) {
+try { framed = window.top !== window.self; } catch { /* a frame on another site */ }
+if (signedIn && !framed && !document.querySelector('[data-admin-app]')) {
   ready.then(() => import('./admin/bar.js')).catch((err) => console.warn('[content] editor not loaded:', err.message));
 }

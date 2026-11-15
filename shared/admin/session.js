@@ -256,9 +256,16 @@ export async function create(collection, data) {
   return toDoc(await call(collection, { method: 'POST', body: { fields: encodeFields(data) } }));
 }
 
+// A change request that names no fields would replace the whole document with nothing. Never send one.
+const fieldList = (values) => {
+  const keys = Object.keys(values || {});
+  if (!keys.length) throw new Fail('other', 'There was nothing to save.');
+  return keys.map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
+};
+
 // Changes only the fields given; the rest of the document is left as it is.
 export async function update(collection, id, data) {
-  const mask = Object.keys(data).map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
+  const mask = fieldList(data);
   return toDoc(await call(`${collection}/${encodeURIComponent(id)}`, { method: 'PATCH', query: `${mask}&currentDocument.exists=true`, body: { fields: encodeFields(data) } }));
 }
 
@@ -266,7 +273,59 @@ export async function remove(collection, id) {
   await call(`${collection}/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
-// Sets one field of a document (creating the document if it isn't there yet).
-export async function setField(docPath, field, value) {
-  await call(docPath, { method: 'PATCH', query: `updateMask.fieldPaths=${encodeURIComponent(field)}`, body: { fields: { [field]: encode(value) } } });
+// Sets the given fields of a document and leaves its other fields alone (creating the document if it isn't there yet).
+export async function setFields(docPath, values) {
+  await call(docPath, { method: 'PATCH', query: fieldList(values), body: { fields: encodeFields(values) } });
+}
+export const setField = (docPath, field, value) => setFields(docPath, { [field]: value });
+
+/* ---------- files, as the signed-in person ---------- */
+
+const FILES = `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(`${PROJECT}.firebasestorage.app`)}/o`;
+
+// The one folder the foundation's storage is known to accept pictures in from an admin account:
+// the previous admin panel uploads board members' photos there.
+export const PHOTO_FOLDER = 'board-photos';
+
+const fileProblem = (status, answer) => {
+  const detail = `${answer?.error?.message || `HTTP ${status}`}`;
+  if (status === 403) return new Fail('denied', 'The file storage refused that upload. This account may not have permission for it.', detail);
+  if (status === 402) return new Fail('other', 'The foundation’s file storage is full or over its limit.', detail);
+  if (status === 413) return new Fail('other', 'That file is too large to upload.', detail);
+  return new Fail('other', 'The upload didn’t work. Try again in a moment.', detail);
+};
+
+// Uploads one file to the foundation's storage and returns its public address. The request has the same
+// form Firebase's own code sends for a simple upload: the file's details and its bytes in one message.
+export async function upload(path, blob, retried = false) {
+  const idToken = await token();
+  const type = blob.type || 'application/octet-stream';
+  const boundary = `${Math.random().toString().slice(2)}${Math.random().toString().slice(2)}`;
+  const details = JSON.stringify({ name: path, contentType: type, cacheControl: 'public, max-age=31536000' });   // the name is new each time, so it can be kept for a year
+  const body = await new Blob([
+    `--${boundary}\r\nContent-Type: application/json; charset=utf-8\r\n\r\n${details}\r\n--${boundary}\r\nContent-Type: ${type}\r\n\r\n`,
+    blob,
+    `\r\n--${boundary}--`,
+  ]).arrayBuffer();
+  const auth = { Authorization: `Firebase ${idToken}` };
+  const { res, body: answer } = await request(`${FILES}?name=${encodeURIComponent(path)}`, {
+    method: 'POST',
+    headers: { ...auth, 'X-Goog-Upload-Protocol': 'multipart', 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body,
+  });
+  if (res.status === 401 && !retried) {
+    await token(true);
+    return upload(path, blob, true);
+  }
+  if (res.status === 401) { signOut(); throw new Fail('expired', 'Your sign-in has ended. Please sign in again.'); }
+  if (!res.ok) throw fileProblem(res.status, answer);
+
+  // The address visitors can load the file from carries a token that the storage issues with the file.
+  let tokens = answer?.downloadTokens;
+  if (!tokens) {
+    const about = await request(`${FILES}/${encodeURIComponent(path)}`, { headers: auth });
+    tokens = about.body?.downloadTokens;
+  }
+  if (!tokens) throw new Fail('other', 'The photo was uploaded, but its address couldn’t be read. Try again in a moment.');
+  return `${FILES}/${encodeURIComponent(path)}?alt=media&token=${encodeURIComponent(String(tokens).split(',')[0])}`;
 }

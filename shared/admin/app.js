@@ -1,18 +1,18 @@
 // The editor at /admin/: sign in, then write essays, add events, read what the forms collected,
-// and see the text edits made on the pages. Everything is read from and saved to the foundation's
+// and see the wording and photos changed on the pages. Everything is read from and saved to the foundation's
 // database as the signed-in person (see session.js); the page itself holds no content.
 //
 // Sections follow the address: #essays, #essays/new, #essays/<id>, #events…, #inbox, #newsletter, #text.
 
 import * as session from './session.js';
 import { markdown, splitTitle, toDate } from '../cms.js';
-import { fetchEdits, setEdits, sanitize, TEXT_DOC, TEXT_FIELD } from '../content.js';
+import { fetchChanges, fetchEdits, setEdits, setImages, isStored, sanitize, TEXT_DOC, TEXT_FIELD, IMAGE_FIELD } from '../content.js';
 
 const root = document.querySelector('[data-admin-app]');
 const SITE = new URL('../../', import.meta.url).href;
 document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: new URL('./admin.css', import.meta.url).href }));
 
-const TABS = [['essays', 'Essays'], ['events', 'Events'], ['inbox', 'Inbox'], ['newsletter', 'Newsletter'], ['text', 'Page text']];
+const TABS = [['essays', 'Essays'], ['events', 'Events'], ['inbox', 'Inbox'], ['newsletter', 'Newsletter'], ['text', 'Text and photos']];
 const VOLUNTEER = 'Volunteer sign-up';
 
 /* ---------- small helpers ---------- */
@@ -341,20 +341,27 @@ async function inbox() {
       </li>`).join('')}</ul>` : '<p class="adm-empty">No messages yet.</p>'}`;
 }
 
+// Anyone can type anything into the sign-up box, so only what is plainly an email address is copied or
+// downloaded. A spreadsheet program would run a line beginning with = + - or @ as a formula.
+const isPlainAddress = (s) => typeof s === 'string' && /^[A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9][A-Za-z0-9.-]*\.[A-Za-z]{2,}$/.test(s);
+
 let addresses = [];
 async function newsletter() {
   loading('Loading the list…');
-  const items = (await session.list('newsletterSubscriptions')).sort((a, b) => (toDate(b.subscribedAt) || 0) - (toDate(a.subscribedAt) || 0));
-  addresses = [...new Set(items.filter((s) => s.isActive !== false && s.email).map((s) => s.email.trim()))];
+  const items = (await session.list('newsletterSubscriptions'))
+    .map((s) => ({ ...s, email: typeof s.email === 'string' ? s.email.trim() : String(s.email ?? '') }))
+    .sort((a, b) => (toDate(b.subscribedAt) || 0) - (toDate(a.subscribedAt) || 0));
+  addresses = [...new Set(items.filter((s) => s.isActive !== false && isPlainAddress(s.email)).map((s) => s.email))];
+  const odd = items.filter((s) => !isPlainAddress(s.email)).length;
   view().innerHTML = `
     ${takeFlash()}
     <div class="adm-head">
-      <div><h2>Newsletter</h2><p>People who signed up in the “Letters from the dawn” box. ${addresses.length} address${addresses.length === 1 ? '' : 'es'}.</p></div>
+      <div><h2>Newsletter</h2><p>People who signed up in the “Letters from the dawn” box. ${addresses.length} address${addresses.length === 1 ? '' : 'es'}.${odd ? ` ${odd} entr${odd === 1 ? 'y doesn’t' : 'ies don’t'} look like an ordinary email address and ${odd === 1 ? 'is' : 'are'} left out when you copy or download.` : ''}</p></div>
       <div class="adm-actions">${addresses.length ? '<button type="button" class="btn btn-ink sm" data-act="copy">Copy all addresses</button><button type="button" class="btn btn-line sm" data-act="csv">Download the list</button>' : ''}</div>
     </div>
     <p class="adm-note" data-note role="status"></p>
     ${items.length ? `<ul class="adm-list">${items.map((s) => `
-      <li class="adm-mail"><span><b>${esc(s.email || '')}</b><span class="adm-sub">${esc(longDate(toDate(s.subscribedAt)))}</span></span>
+      <li class="adm-mail"><span><b>${esc(s.email)}</b>${isPlainAddress(s.email) ? '' : '<span class="adm-badge quiet">Left out</span>'}<span class="adm-sub">${esc(longDate(toDate(s.subscribedAt)))}</span></span>
         <button type="button" class="adm-danger sm" data-del="newsletterSubscriptions/${esc(s.id)}" data-after="#newsletter" data-done="Address removed.">Remove</button></li>`).join('')}</ul>` : '<p class="adm-empty">Nobody has signed up yet.</p>'}`;
 }
 
@@ -379,21 +386,30 @@ function downloadAddresses() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/* ---------- text changed on the pages ---------- */
+/* ---------- wording and photos changed on the pages ---------- */
+
+// Where a photo's original file is: inside this site, or at the outside address the page uses.
+const originalPhoto = (key) => (/^https?:/i.test(key) ? key : SITE + key);
 
 async function text() {
-  loading('Loading text changes…');
-  const edits = await fetchEdits();
+  loading('Loading the changes…');
+  const { edits, images } = await fetchChanges();
   const keys = Object.keys(edits);
+  const photos = Object.keys(images).filter((k) => isStored(images[k]));
   view().innerHTML = `
     ${takeFlash()}
-    <div class="adm-head"><div><h2>Page text</h2>
-      <p>To change wording, open any page of the site and press <b>Edit this page</b> in the bar at the bottom. Click the text, type, and press Save.</p></div>
+    <div class="adm-head"><div><h2>Text and photos</h2>
+      <p>To change wording or a photo, open any page of the site and press <b>Edit this page</b> in the bar at the bottom. Click the text and type, or click a photo to choose another, then press Save.</p></div>
       <a class="btn btn-sun sm" href="${SITE}">Go to the site</a></div>
-    <h3 class="adm-group">Changes in place now</h3>
+    <h3 class="adm-group">Wording changed</h3>
     ${keys.length ? `<ul class="adm-list">${keys.map((k) => `
       <li class="adm-mail"><span class="adm-sub" style="margin:0;font-size:15.5px;color:var(--text)">${esc(plainText(edits[k]).slice(0, 220) || '(empty)')}</span>
-        <button type="button" class="adm-danger sm" data-undo="${esc(k)}">Use the original wording</button></li>`).join('')}</ul>` : '<p class="adm-empty">None. Every page shows the wording it was built with.</p>'}`;
+        <button type="button" class="adm-danger sm" data-undo="${esc(k)}">Use the original wording</button></li>`).join('')}</ul>` : '<p class="adm-empty">None. Every page shows the wording it was built with.</p>'}
+    <h3 class="adm-group">Photos changed</h3>
+    ${photos.length ? `<ul class="adm-list">${photos.map((k) => `
+      <li class="adm-mail"><span class="adm-swap"><img class="was" src="${esc(originalPhoto(k))}" alt="The original photo" loading="lazy"> replaced by
+        <img src="${esc(images[k].src)}" alt="${esc(images[k].alt || 'The photo shown now')}" loading="lazy"></span>
+        <button type="button" class="adm-danger sm" data-undo-photo="${esc(k)}">Use the original photo</button></li>`).join('')}</ul>` : '<p class="adm-empty">None. Every page shows the photos it was built with.</p>'}`;
 }
 
 async function undoEdit(key) {
@@ -402,6 +418,15 @@ async function undoEdit(key) {
   await session.setField(TEXT_DOC, TEXT_FIELD, JSON.stringify(next));
   setEdits(next);
   flash = 'That text is back to its original wording.';
+  route();
+}
+
+async function undoPhoto(key) {
+  const next = { ...(await fetchChanges()).images };
+  delete next[key];
+  await session.setField(TEXT_DOC, IMAGE_FIELD, JSON.stringify(next));
+  setImages(next);
+  flash = 'That photo is back to the original.';
   route();
 }
 
@@ -467,6 +492,9 @@ root.addEventListener('click', (e) => {
 
   const undo = e.target.closest('[data-undo]');
   if (undo && confirmTwice(undo)) attempt(undo, () => undoEdit(undo.dataset.undo));
+
+  const back = e.target.closest('[data-undo-photo]');
+  if (back && confirmTwice(back)) attempt(back, () => undoPhoto(back.dataset.undoPhoto));
 });
 
 window.addEventListener('hashchange', () => {
@@ -484,5 +512,13 @@ window.addEventListener('hashchange', () => {
 });
 window.addEventListener('beforeunload', (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
-session.onChange(() => { dirty = false; route(); });
-route();
+// The editor does not run inside another page's frame, where the page around it could disguise what is being clicked.
+let framed = true;
+try { framed = window.top !== window.self; } catch { /* a frame on another site */ }
+if (framed) {
+  root.innerHTML = `<div class="adm-card adm-sign"><h2>Open the editor in its own tab</h2><p>For safety, the editor doesn’t run inside another page.</p>
+    <p><a class="btn btn-ink" href="${esc(location.href)}" target="_top">Open the editor</a></p></div>`;
+} else {
+  session.onChange(() => { dirty = false; route(); });
+  route();
+}
