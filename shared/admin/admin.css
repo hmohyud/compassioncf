@@ -137,3 +137,17 @@ a.adm-row:hover .adm-title { color: #d0664c; }
   .adm-row { grid-template-columns: 1fr; }
   .adm-meta { text-align: left; }
 }
+/* phones: targets big enough for a thumb, and fields at 16px so iPhones don't zoom the page in on them */
+@media (max-width: 640px) {
+  .adm-card { padding: 26px 22px; border-radius: 24px; }
+  .adm-tabs a { padding: 11px 16px; }
+  .adm-tools button { padding: 10px 14px; font-size: 14px; }
+  .adm-edit textarea.adm-text { font-size: 16px; }
+  .adm-actions .btn, .adm-danger { min-height: 44px; }
+  .adm-link { padding: 10px 0; }
+  .ed-photo input { font-size: 16px; }
+  .ed-photo button { padding: 10px 0; }
+  .ed-photo .ed-photo-done { padding: 10px 20px; }
+  .edbar a, .edbar button { padding: 10px 6px; }
+  .edbar .edbar-main { padding: 10px 18px; }
+}

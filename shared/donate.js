@@ -72,8 +72,13 @@ html:has(.dn[open]) { overflow: hidden; }
 .dn-done .dn-go { margin-top: 26px; }
 @media (max-width: 480px) {
   .dn-card { padding: 32px 20px 22px; }
-  .dn-amts { grid-template-columns: repeat(3, 1fr); }
+  /* five amounts: three on the first row, the last two sharing the second, so no gap is left over */
+  .dn-amts { grid-template-columns: repeat(6, 1fr); }
+  .dn-amt { grid-column: span 2; }
+  .dn-amt:nth-child(n+4) { grid-column: span 3; }
 }
+/* On a touch screen, iPhones zoom the whole page in when a field's text is under 16px. */
+@media (pointer: coarse) { .dn-cur select { font-size: 16px; } }
 @media (prefers-reduced-motion: reduce) { .dn[open], .dn[open]::backdrop { animation: none; } }
 `;
 

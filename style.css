@@ -20,10 +20,13 @@
   --r: 22px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; scroll-padding-top: 80px; }
-body { overflow-x: clip; font: 17px/1.65 var(--sans); color: var(--text); background: var(--cream); -webkit-font-smoothing: antialiased; }
+/* text-size-adjust: phones keep the sizes set here when turned sideways.
+   overflow-wrap: a word too long for its line (a pasted web address, say) breaks instead of widening the page. */
+html { scroll-behavior: smooth; scroll-padding-top: 80px; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { overflow-x: clip; overflow-wrap: break-word; font: 17px/1.65 var(--sans); color: var(--text); background: var(--cream); -webkit-font-smoothing: antialiased; }
 img { display: block; max-width: 100%; }
 a { color: inherit; }
+a, button, label, input, select, textarea, summary { -webkit-tap-highlight-color: rgba(246, 184, 96, .22); }
 .wrap { width: min(1180px, 100% - 48px); margin-inline: auto; }
 .sr, .skip:not(:focus) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .skip:focus { position: fixed; top: 10px; left: 10px; z-index: 100; background: #fff; padding: 8px 14px; border-radius: 8px; }
@@ -59,7 +62,7 @@ em { font-style: italic; }
 .burger[aria-expanded="true"] span:last-child { transform: translateY(-4px) rotate(-45deg); }
 
 /* ---------- hero ---------- */
-.hero { position: relative; min-height: 100vh; color: #fff; overflow: hidden; padding: 130px 0 96px; display: flex; flex-direction: column; justify-content: center;
+.hero { position: relative; min-height: 100vh; min-height: 100svh; color: #fff; overflow: hidden; padding: 130px 0 96px; display: flex; flex-direction: column; justify-content: center;
   background: linear-gradient(180deg, #070a24 0%, var(--night) 30%, #1d2160 62%, #42306e 81%, #a2586f 92%, #f3a575 100%); }
 .sky { position: absolute; inset: 0; pointer-events: none; -webkit-mask-image: linear-gradient(#000 82%, transparent); mask-image: linear-gradient(#000 82%, transparent); }
 .stars { position: absolute; inset: 0 0 30%; background-repeat: repeat; }
@@ -184,17 +187,16 @@ em { font-style: italic; }
 
 /* ---------- responsive ---------- */
 @media (max-width: 960px) {
-  .burger { display: block; z-index: 2; }
-  .nav { position: fixed; inset: 0; flex-direction: column; justify-content: center; gap: 26px; background: rgba(11,16,48,.97); opacity: 0; pointer-events: none; transition: opacity .3s; }
-  .nav.open { opacity: 1; pointer-events: auto; }
-  .nav a:not(.btn) { font: 400 28px var(--serif); }
   .hero { padding-top: 110px; }
   .hero-grid { grid-template-columns: 1fr; text-align: center; }
-  .cta { justify-content: center; }
+  .hero .cta { justify-content: center; }
   .lede { margin-inline: auto; }
   .hero-globe { max-width: 520px; margin: 0 auto; width: 100%; }
-  .mv, .why-grid, .cards, .ways, .ftr-grid { grid-template-columns: 1fr; }
+  .mv, .why-grid, .cards, .ways { grid-template-columns: 1fr; }
   .mv-card { padding: 36px 28px; }
+  /* footer: the name and tagline across the top, the two lists of links side by side under it */
+  .ftr-grid { grid-template-columns: 1fr 1fr; }
+  .ftr-grid > div:first-child { grid-column: 1 / -1; }
 }
 
 /* Donate dialog (shared/donate.js) */
@@ -569,3 +571,220 @@ form.sending button[disabled] { opacity: .7; cursor: progress; transform: none; 
   .read p, .read li { font-size: 18.5px; }
 }
 .why-head .more { display: inline-block; margin-top: 24px; }
+
+/* ============================================================
+   Phones and tablets
+   Everything below only changes how the site looks on a small screen.
+   ============================================================ */
+@keyframes nav-in { from { opacity: 0; transform: translateY(14px); } }
+
+@media (max-width: 960px) {
+  /* ---- the menu: a screen of its own, in the night-to-dawn colours ---- */
+  .burger { display: block; z-index: 2; width: 44px; height: 44px; margin-right: -11px; }
+  .burger span { left: 11px; right: 11px; }
+  .burger span:first-child { top: 17px; }
+  .burger span:last-child { top: 25px; }
+  .brand { position: relative; z-index: 2; }   /* the name stays readable above the open menu */
+  .nav { position: fixed; inset: 0; flex-direction: column; justify-content: flex-start; gap: 2px; padding: 92px 24px 44px; overflow-y: auto; overscroll-behavior: contain;
+    background: radial-gradient(130% 55% at 50% 118%, rgba(246, 160, 110, .5), transparent 70%), linear-gradient(180deg, #070a24, var(--night) 40%, #1d2160 78%, #3a2a6a);
+    opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .3s, visibility 0s .3s; }
+  .nav.open { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .3s, visibility 0s; }
+  /* centred while it fits; on a short or sideways screen it starts at the top and scrolls instead of being cut off */
+  .nav > :first-child { margin-top: auto; }
+  .nav > :last-child { margin-bottom: auto; }
+  .nav a:not(.btn) { font: 400 30px/1.2 var(--serif); padding: 9px 20px; }
+  .nav a:not(.btn)::after { left: 20px; right: calc(100% - 20px); bottom: 5px; }
+  .nav a:not(.btn):hover::after, .nav a[aria-current="page"]:not(.btn)::after { right: 20px; }
+  .nav .btn { margin-top: 20px; padding: 15px 46px; font-size: 17px; }
+  .nav.open > * { animation: nav-in .5s cubic-bezier(.2, .7, .2, 1) both; }
+  .nav.open > :nth-child(2) { animation-delay: .04s; }
+  .nav.open > :nth-child(3) { animation-delay: .08s; }
+  .nav.open > :nth-child(4) { animation-delay: .12s; }
+  .nav.open > :nth-child(5) { animation-delay: .16s; }
+  .nav.open > :nth-child(6) { animation-delay: .2s; }
+  .nav.open > :nth-child(7) { animation-delay: .24s; }
+  html:has(.nav.open) { overflow: hidden; }   /* the page behind stays put while the menu is open */
+
+  /* ---- a person: portrait beside the words while there is room for both ---- */
+  .member, .founder-grid { grid-template-columns: 200px minmax(0, 1fr); gap: 36px; }
+
+  /* ---- pages with a form: the form comes first, the supporting cards after it ---- */
+  .split > .form-card { order: -1; }
+}
+
+/* tablets: room for two columns again, but not three */
+@media (min-width: 641px) and (max-width: 960px) {
+  .mv { grid-template-columns: 1fr 1fr; }
+  /* program cards: picture on the left, words on the right, instead of three very tall cards */
+  .card { flex-direction: row; }
+  .card-img { flex: 0 0 42%; aspect-ratio: auto; min-height: 250px; }
+  .card-body { justify-content: center; padding: 32px 36px; }
+  .card p { flex: none; }
+}
+
+@media (max-width: 640px) {
+  /* ---- rhythm: a little less air between sections, type a notch smaller ---- */
+  .sec { padding: 68px 0; }
+  .sec-head { margin-bottom: 36px; }
+  .kicker { margin-bottom: 14px; }
+  .big { font-size: clamp(29px, 8.6vw, 34px); }
+  .sec-head p:not(.kicker), .why-head p:not(.kicker), .why-body > p, .band p, .prog p:not([class]), .member p:not(.kicker),
+  .empty p, .split-head > p:not(.kicker), .globe-band .copy > p:not(.eyebrow), .cms-note { font-size: 17px; }
+  .hero .lede, .sec-head.center p:not(.kicker), .news p, .empty p, .facts-cap { text-wrap: balance; }   /* centred lines of even length, no stray last word */
+  .more { display: inline-block; padding: 10px 0; }
+  .card .more, .post-card .more { margin-top: 8px; }
+  .why-head .more, .prog .more { margin-top: 10px; }
+  .sec-head.split .more { margin: -6px 0 0; }
+  /* breadcrumb: a bigger target without a taller row, and one line always (a long page name is cut short; the headline under it says it in full) */
+  .crumbs { flex-wrap: nowrap; }
+  .crumbs > * { flex: none; }
+  .crumbs a { padding: 12px 5px; margin: -12px -5px; }
+  .crumbs [aria-current] { flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+  /* ---- home hero ---- */
+  .hero { padding: 100px 0 64px; }
+  .hero-grid { gap: 26px; }
+  .eyebrow { font-size: 12px; letter-spacing: .2em; margin-bottom: 22px; }
+  .hero h1 { font-size: clamp(35px, 11.4vw, 46px); margin-bottom: 22px; }
+  .lede { margin-bottom: 32px; }
+  .hero .cta { flex-direction: column; align-items: stretch; width: min(100%, 304px); margin-inline: auto; gap: 12px; }
+  .hero .cta .btn { justify-content: center; }
+  .hero .facts-block { margin-top: 42px; }
+  .hint { display: block; max-width: 24em; margin-inline: auto; text-align: center; text-wrap: balance; }
+  .hint svg { display: inline; vertical-align: -2px; margin-right: 5px; }
+
+  /* ---- the numbers: each column as wide as its own words need, sharing what is left ---- */
+  .facts { grid-template-columns: repeat(3, minmax(max-content, 1fr)); }
+  .facts li { padding: 0 8px !important; }
+  .facts b { font-size: clamp(21px, 6.4vw, 26px); }
+  .facts span { font-size: clamp(15px, 4.3vw, 17px); }
+
+  /* ---- home and about sections ---- */
+  .mission { padding-top: 44px; }
+  .mv { gap: 18px; }
+  .mv-card { padding: 30px 26px; border-radius: 24px; }
+  .mv-ico { width: 56px; height: 56px; border-radius: 16px; margin-bottom: 20px; }
+  .mv-ico svg { width: 32px; height: 32px; }
+  .mv-card h2 { font-size: 27px; margin-bottom: 10px; }
+  .mv-card p { font-size: 19px; }
+  .why-head .big { margin-bottom: 22px; }
+  .benefits { gap: 12px; }
+  .benefits li { gap: 16px; padding: 18px 20px; border-radius: 16px; font-size: 18.5px; }
+  .benefits li span { width: 42px; height: 42px; }
+  .band-in { padding: 110px 0 60px; }
+  .band blockquote { font-size: clamp(25px, 7.4vw, 30px); margin-bottom: 20px; }
+  .cards { gap: 20px; }
+  .card-img { aspect-ratio: 16 / 10; }
+  .card-body { padding: 24px 24px 22px; }
+  .card h3 { font-size: 23px; }
+  .ways { gap: 14px; }
+  .way { padding: 32px 28px 58px; border-radius: 24px; }
+  .way h3 { font-size: 32px; margin: 8px 0 10px; }
+  .way .arrow { right: 26px; bottom: 22px; }
+  .mini-board { gap: 14px; }
+
+  /* ---- a person: a small portrait beside the name, then the words at full width ---- */
+  .members { gap: 60px; }
+  .member, .founder-grid { grid-template-columns: 116px minmax(0, 1fr); gap: 0 20px; align-items: center; }
+  .member > div:last-child, .founder-grid > div:last-child { display: contents; }
+  .member .portrait, .founder .portrait { grid-column: 1; grid-row: 1 / span 2; max-width: none; padding: 4px; border-radius: 999px 999px 18px 18px; box-shadow: 0 22px 40px -26px rgba(120, 60, 40, .6); }
+  .member .portrait img, .founder .portrait img { border-radius: 999px 999px 15px 15px; }
+  .member .kicker, .founder .kicker { grid-column: 2; align-self: end; margin-bottom: 8px; font-size: 12px; letter-spacing: .18em; }
+  .member h2, .founder .big { grid-column: 2; align-self: start; margin-bottom: 0; font-size: clamp(26px, 7.8vw, 31px); }
+  .member p:not(.kicker), .member .social, .founder p:not(.kicker), .founder .cta { grid-column: 1 / -1; }
+  .member h2 + p, .founder .big + p { margin-top: 26px; }
+  .founder .cta { margin-top: 24px; }
+
+  /* ---- newsletter and footer ---- */
+  .news::before { width: 640px; height: 420px; bottom: -270px; }
+  .news h2 { font-size: clamp(25px, 8vw, 32px); text-wrap: balance; }
+  .news-form { flex-direction: column; align-items: stretch; gap: 12px; margin-top: 28px; }
+  .news-form input { flex: none; }
+  .news-form .btn { justify-content: center; }
+  .news-form .form-msg { flex-basis: auto; }
+  .ftr { padding: 56px 0 26px; }
+  .ftr-grid { gap: 34px 20px; }
+  .ftr h4 { margin-bottom: 6px; }
+  .ftr-grid > div > a:not(.brand) { padding: 9px 0; }
+  .ftr-base { margin-top: 34px; }
+  .social a { width: 44px; height: 44px; }
+
+  /* ---- page hero and body ---- */
+  .phero { padding: 122px 0 76px; }
+  .phero h1 { font-size: clamp(34px, 10.6vw, 42px); }
+  .phero-sub { margin-top: 12px; font-size: 21px; }
+  .phero .lede { margin-top: 20px; }
+  .phero .facts-block { margin-top: 34px; }
+  .byline { margin-top: 24px; }
+  .pbody { padding: 60px 0 76px; }
+  .no-hero .pbody { padding: 84px 0 56px; }
+
+  /* ---- program pages ---- */
+  .prose > * + * { margin-top: 20px; }
+  .prose .lead { font-size: 22px; line-height: 1.4; }
+  .prose h2 { font-size: 27px; margin-top: 52px; }
+  .prose p { font-size: 17.5px; line-height: 1.7; }
+  .pull { margin: 44px 0 !important; padding-left: 24px; font-size: 22px; }
+  .aside { gap: 16px; }
+  .give-card { padding: 32px 28px 30px; border-radius: 24px; }
+  .give-card h3 { font-size: 27px; }
+  .side-list { padding: 24px 26px 10px; border-radius: 24px; }
+  /* the five round links always share one row in a card, shrinking a little on the narrowest phones */
+  .side-list .social ul { display: grid; grid-template-columns: repeat(5, minmax(0, 44px)); gap: 9px; }
+  .side-list .social a { width: 100%; height: auto; aspect-ratio: 1; }
+  .callout { margin-top: 56px !important; padding: 30px 24px; border-radius: 24px; }
+  .callout .cta, .empty .cta { display: grid; grid-template-columns: 1fr; gap: 10px; max-width: 400px; }
+  .empty .cta { margin-inline: auto; }
+  .callout .cta .btn, .empty .cta .btn { justify-content: center; }
+  .empty .cta:has(> :nth-child(3)) { grid-template-columns: 1fr 1fr; }
+  .empty .cta:has(> :nth-child(3)) .btn { padding-inline: 10px; }
+  .pager { margin-top: 64px; padding-top: 28px; gap: 22px; }
+  .globe-band { padding: 72px 0; }
+  .globe-band-in { gap: 36px; }
+  .globe-band h2 { font-size: clamp(29px, 8.6vw, 34px); }
+  .prog-list { gap: 64px; }
+  .prog { gap: 26px; }
+  .prog-media { aspect-ratio: 4 / 3; border-radius: 24px; }
+  .prog h2 { font-size: clamp(29px, 8.6vw, 34px); margin-top: 10px; }
+  .prog-sub { font-size: 20px; margin-bottom: 14px; }
+
+  /* ---- essays and events ---- */
+  .posts { gap: 20px; }
+  .post-text { padding: 22px 24px 20px; }
+  .post-card h3 { font-size: 23px; }
+  .posts.featured .post-card:first-child .post-text { padding: 24px 24px 22px; }
+  .posts.featured .post-card:first-child h3 { font-size: 28px; }
+  .posts.featured .post-card:first-child .post-sub { font-size: 19px; }
+  .read h2 { font-size: 27px; }
+  .read h3, .read h4 { font-size: 22px; }
+  .read blockquote { padding-left: 20px; }
+  .author { margin-top: 56px; padding-top: 30px; align-items: start; }
+  .more-posts { margin-top: 64px; }
+  .events { gap: 14px; }
+  .event h3 { font-size: 24px; }
+
+  /* ---- forms ---- */
+  .split { gap: 48px; }
+  .split-head > p:not(.kicker) { margin-bottom: 28px; }
+  .form-card { padding: 28px 22px 26px; border-radius: 24px; }
+  .form-card > p { margin-bottom: 24px; }
+  .form .btn { justify-self: stretch; justify-content: center; }
+  .chips span { padding: 11px 16px; }
+  .helps { gap: 12px; }
+  .help { display: grid; grid-template-columns: 44px minmax(0, 1fr); column-gap: 16px; align-items: start; padding: 20px; border-radius: 20px; }
+  .help .mv-ico { grid-row: 1 / span 2; width: 44px; height: 44px; margin: 2px 0 0; }
+  .help h3 { font-size: 21px; margin-bottom: 4px; }
+}
+
+@media (max-width: 380px) {
+  .wrap { width: calc(100% - 40px); }
+  .brand { gap: 10px; font-size: 17px; }
+  .eyebrow { font-size: 11px; letter-spacing: .17em; }
+}
+
+/* A finger has no hover: after a tap these would otherwise stay lifted until the next tap elsewhere. */
+@media (hover: none) {
+  .btn-sun:hover, .btn-ghost:hover, .btn-ink:hover, .btn-line:hover, .way:hover, .mini:hover, .post-card:not(.skel):hover { transform: none; }
+  .way:hover::before, .way:hover .arrow, .more:hover span, .prog-media:hover img, .prog-media:hover .wave-art svg { transform: none; }
+  .post-card:not(.skel):hover .post-art::after { transform: translateX(-50%); }
+}

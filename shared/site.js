@@ -52,15 +52,18 @@ if (header) {
 
 document.querySelectorAll('[data-nav-toggle]').forEach((btn) => {
   const nav = document.getElementById(btn.getAttribute('aria-controls'));
-  btn.addEventListener('click', () => {
-    const open = btn.getAttribute('aria-expanded') !== 'true';
+  const set = (open) => {
     btn.setAttribute('aria-expanded', String(open));
     nav.classList.toggle('open', open);
+  };
+  btn.addEventListener('click', () => set(btn.getAttribute('aria-expanded') !== 'true'));
+  // Any link in the header closes it: the page is about to change, or (the name, on the home page) scroll to the top.
+  (btn.closest('header') || nav).querySelectorAll('a').forEach((a) => a.addEventListener('click', () => set(false)));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && nav.classList.contains('open')) { set(false); btn.focus(); }
   });
-  nav.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => {
-    btn.setAttribute('aria-expanded', 'false');
-    nav.classList.remove('open');
-  }));
+  // A phone turned sideways, or a window widened past the phone layout: the links are an ordinary row again.
+  window.matchMedia('(min-width: 961px)').addEventListener('change', (e) => { if (e.matches) set(false); });
 });
 
 document.querySelectorAll('[data-year]').forEach((el) => { el.textContent = new Date().getFullYear(); });

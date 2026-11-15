@@ -44,7 +44,7 @@ What "Edit this page" does not change: the menu, the forms, the logo, the number
 
 - `index.html`: the home page, written by hand.
 - Every other page is written by `tools/build_pages.py` from templates in that file, so they share one header, footer and newsletter block. Change a page there and run `python tools/build_pages.py`; edits made in the built `.html` files are overwritten by the next run. The script also replaces the home page's header and footer so they match.
-- `style.css`: all of the site's styles.
+- `style.css`: all of the site's styles. Its last section, "Phones and tablets", holds what is specific to small screens: the full-screen menu, the form coming first on the contact, volunteer and donate pages, and the sizes and spacing for phones.
 - `shared/site.js`: scroll reveals, counting numbers, the mobile menu.
 - `shared/globe.js`, `shared/globe-lazy.js`, `shared/clusters.js`, `shared/textures/`, `shared/vendor/`: the participant globe (three.js r182, no CDN). `clusters.js` is the participant map pre-clustered on a 3° grid: 3,898 locations in 487 regions. `globe-lazy.js` mounts the globe only when it nears the viewport.
 - `shared/cms.js`: reads essays and events from the foundation's database. Pages opt in with `data-cms="blog-list" | "blog-post" | "events"`. It renders the essays' Markdown safely and shows an empty state if the read fails.
