@@ -14,7 +14,7 @@
 //         "removed"   the foundation emptied the line, and it was taken out of the pages; for reference
 //         "gone"      the line was on a page that no longer exists; for reference
 //
-// Written by a script from the saved changes and the pages (the README says how). If a line's wording is
+// Written by a script from the saved changes and the pages. If a line's wording is
 // changed in tools/build_pages.py or index.html, its key changes and its entry here stops matching.
 export const EARLIER = [
   { key: "2:f8dfa9ebfd882837", kind: "kept", where: "About", was: "The Compassion Course Foundation, Inc. is a 501(c)(3) nonprofit dedicated to helping individuals gain access to meaningful, proven and lasting peace education, and ultimately co-creating a more humane and sustainable world.", now: "The Compassion Course Foundation Inc is a 501(c)(3) nonprofit dedicated to helping individuals gain access to meaningful, proven and lasting peace education, and ultimately co-creating a more humane and sustainable world." },

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Copies the files that make up the website into a folder to publish: everything in the
-# repository except the files only the repository needs (this folder, the README, the
-# GitHub workflow). Used by .github/workflows/deploy.yml, and handy for testing the exact
-# published site locally.
+# repository except the files only the repository needs (this folder and the GitHub
+# workflow; a README.md, should one ever be added, is left out too). Used by
+# .github/workflows/deploy.yml, and handy for testing the exact published site locally.
 #
 #   bash tools/assemble.sh [out-dir]      (default: _site, which git ignores)
 set -euo pipefail
