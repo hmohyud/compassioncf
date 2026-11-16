@@ -1,28 +1,29 @@
 // Real form submissions. A form opts in with data-form and needs a [data-form-msg] element for the reply:
 //
-//   <form data-form="contact | volunteer | newsletter"> … <p data-form-msg role="status"></p></form>
+//   <form data-form="contact | newsletter"> … <p data-form-msg role="status"></p></form>
 //
 // Each submission is saved as a document in the foundation's database (the Firestore project
-// compassioncf.com already uses; see cms.js), in the same shape the current site writes, so it
-// shows up in the foundation's admin panel like any other:
+// compassioncf.com already uses; see cms.js), in the shape the previous site wrote, so it shows up
+// in the editor and in the foundation's previous admin panel like any other:
 //
 //   contact     contactSubmissions       { name, email, subject, message, submittedAt }
-//   volunteer   contactSubmissions       the same, with the subject "Volunteer sign-up" and the phone
-//                                        number and chosen interests written into the message
-//   newsletter  newsletterSubscriptions  { email, subscribedAt, isActive: true }
+//   newsletter  newsletterSubscriptions  { email, subscribedAt, isActive: true }, and, from the
+//                                        "Join our Mailing List" box, { name, location } as well
 //
-// Volunteer notes go to the contact inbox because the current site has no working place for them:
-// its own volunteer form writes to "applications/volunteer", which is not a valid collection path.
+// The name and the town or country are newer than the list itself. If the database's rules only accept
+// the three fields the list has always had, the address is still saved the old way, and the name and
+// place are sent to the inbox as a note with the subject "Mailing list sign-up". Either way the sign-up
+// is kept and nothing the person typed is lost.
 //
 // No API key is sent; whether a write is accepted is decided by the database's own rules.
 
 const DB = 'https://firestore.googleapis.com/v1/projects/compassioncf-web-site/databases/(default)/documents';
 
-const LIMITS = { name: 120, email: 200, phone: 40, subject: 200, message: 5000 };
+const LIMITS = { name: 120, email: 200, location: 120, subject: 200, message: 5000 };
+const MAILING_LIST = 'Mailing list sign-up';   // shared/admin/app.js labels these notes in the inbox
 
 const COPY = {
   contact: 'Thank you. Your message is on its way, and we’ll reply as soon as we can.',
-  volunteer: 'Thank you. We’ve received your note and will be in touch.',
   newsletter: 'Thank you. You’re on the list.',
   failed: 'Sorry, that didn’t go through. Please try again in a moment.',
 };
@@ -43,37 +44,40 @@ async function create(collection, data) {
       body: JSON.stringify({ fields: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, encode(v)])) }),
       signal: ctrl.signal,
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw Object.assign(new Error(`HTTP ${res.status}`), { status: res.status });
   } finally {
     clearTimeout(timer);
   }
 }
 
 // What each kind of form saves, and where.
-const BUILD = {
-  contact: (f) => ['contactSubmissions', {
+const SAVE = {
+  contact: (f) => create('contactSubmissions', {
     name: f('name'), email: f('email'), subject: f('subject'), message: f('message'), submittedAt: new Date(),
-  }],
-  volunteer: (f, form) => {
-    const interests = [...form.querySelectorAll('input[name="interest"]:checked')].map((i) => i.parentElement.textContent.trim());
-    const message = [
-      interests.length ? `Would like to help with: ${interests.join(', ')}` : '',
-      f('phone') ? `Phone: ${f('phone')}` : '',
-      f('message'),
-    ].filter(Boolean).join('\n\n');
-    return ['contactSubmissions', {
-      name: f('name'), email: f('email'), subject: 'Volunteer sign-up', message: message.slice(0, LIMITS.message), submittedAt: new Date(),
-    }];
+  }),
+  newsletter: async (f) => {
+    const entry = { email: f('email'), subscribedAt: new Date(), isActive: true };
+    const details = Object.fromEntries([['name', f('name')], ['location', f('location')]].filter(([, v]) => v));
+    if (!Object.keys(details).length) return create('newsletterSubscriptions', entry);
+    try {
+      await create('newsletterSubscriptions', { ...entry, ...details });
+    } catch (err) {
+      if (err.status !== 403) throw err;
+      // Refused by the database's rules: save the address the way the list always has, and send the rest to the inbox.
+      await create('newsletterSubscriptions', entry);
+      const note = [details.name ? `Name: ${details.name}` : '', details.location ? `Town / country: ${details.location}` : ''].filter(Boolean).join('\n');
+      await create('contactSubmissions', { name: details.name || 'Mailing list', email: entry.email, subject: MAILING_LIST, message: note, submittedAt: new Date() })
+        .catch((e) => console.warn('[forms] mailing-list details not saved:', e.message));
+    }
   },
-  newsletter: (f) => ['newsletterSubscriptions', { email: f('email'), subscribedAt: new Date(), isActive: true }],
 };
 
 function mount(form) {
   const kind = form.dataset.form;
-  const build = BUILD[kind];
+  const save = SAVE[kind];
   const msg = form.querySelector('[data-form-msg]');
   const button = form.querySelector('button[type="submit"], button:not([type])');
-  if (!build || !msg || !button) return;
+  if (!save || !msg || !button) return;
 
   // A field people never see. Scripts that fill in everything give themselves away by filling it.
   const trap = Object.assign(document.createElement('input'), { type: 'text', name: 'website', tabIndex: -1, autocomplete: 'off' });
@@ -99,7 +103,7 @@ function mount(form) {
     form.classList.add('sending');
     say('');
     try {
-      if (!trap.value) await create(...build(field, form));
+      if (!trap.value) await save(field, form);
       form.reset();
       say(COPY[kind], 'ok');
     } catch (err) {

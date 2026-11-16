@@ -5,9 +5,11 @@
 // Pages opt in with a data-cms attribute:
 //   [data-cms="blog-list"]  cards into [data-posts]; data-href (link prefix, default "post.html?id="),
 //                           data-limit, data-exclude-current (skip the ?id= post). A container with
-//                           the hidden attribute is revealed only once posts load.
+//                           the hidden attribute is revealed only once posts load. A [data-cms-more]
+//                           link inside it is shown when there are more essays than the limit.
 //   [data-cms="blog-post"]  reads ?id= and fills the [data-post-*] slots
-//   [data-cms="events"]     upcoming events into [data-events-list], else shows [data-events-empty]
+//   [data-cms="events"]     upcoming events into [data-events-list], beside any dates written into
+//                           the page there; shows [data-events-empty] when the list ends up empty
 //
 // No API key is sent: these collections are publicly readable.
 
@@ -180,13 +182,15 @@ async function blogList(el) {
   const skip = el.hasAttribute('data-exclude-current') ? new URLSearchParams(location.search).get('id') : null;
   const show = (sel) => { const n = el.querySelector(sel); if (n) n.hidden = false; };
   try {
-    const posts = (await publishedPosts()).filter((p) => p.id !== skip).slice(0, +el.dataset.limit || Infinity);
+    const all = (await publishedPosts()).filter((p) => p.id !== skip);
+    const posts = all.slice(0, +el.dataset.limit || Infinity);
     if (!posts.length) {
       slot.innerHTML = '';
       show('[data-cms-empty]');
       return;
     }
     slot.innerHTML = posts.map((p, i) => postCard(p, i, href)).join('');
+    if (all.length > posts.length) show('[data-cms-more]');
     el.hidden = false;
   } catch (err) {
     console.warn('[cms] blog list unavailable:', err.message);
@@ -233,7 +237,7 @@ function eventItem(e, i) {
   const timed = d.getHours() || d.getMinutes();
   const day = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   const time = timed ? ` · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : '';
-  return `<li class="event" style="--i:${i}">
+  return `<li class="event" style="--i:${i}" data-date="${isoDay(d)}" data-no-edit>
   <div class="event-date" aria-hidden="true"><b>${d.getDate()}</b><span>${d.toLocaleDateString('en-US', { month: 'short' })}</span><small>${d.getFullYear()}</small></div>
   <div>
     <h3>${esc(e.title || 'Event')}</h3>
@@ -243,26 +247,43 @@ function eventItem(e, i) {
 </li>`;
 }
 
+// The list may already hold dates written into the page itself. Each of those says when it ends
+// (data-until, its last day) and leaves the page by itself once that day has passed. Events from the
+// database join the same list in date order (data-date is where an item sorts).
 async function events(el) {
   const part = (k) => el.querySelector(`[data-events-${k}]`);
+  const listEl = part('list');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  listEl.querySelectorAll('[data-until]').forEach((item) => {
+    const until = toDate(item.dataset.until);
+    if (until && until < today) item.remove();
+  });
+  const settle = () => {
+    const any = listEl.children.length > 0;
+    listEl.hidden = !any;
+    part('empty').hidden = any;
+    if (part('loading')) part('loading').hidden = true;
+  };
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     const upcoming = (await list('events'))
       .filter((e) => e.isActive !== false)
       .map((e) => ({ ...e, when: toDate(e.date) }))
       .filter((e) => e.when && e.when >= today)
       .sort((a, b) => a.when - b.when);
-    part('loading').hidden = true;
-    if (!upcoming.length) { part('empty').hidden = false; return; }
-    part('list').innerHTML = upcoming.map(eventItem).join('');
-    part('list').hidden = false;
+    const holder = document.createElement('template');
+    upcoming.forEach((e, i) => {
+      holder.innerHTML = eventItem(e, i);
+      const item = holder.content.firstElementChild;
+      const later = [...listEl.children].find((other) => (other.dataset.date || '') > item.dataset.date);
+      listEl.insertBefore(item, later || null);
+    });
+    settle();
   } catch (err) {
     console.warn('[cms] events unavailable:', err.message);
-    part('loading').hidden = true;
-    part('empty').hidden = false;
     const note = part('note');
-    if (note) note.textContent = 'We couldn’t load the calendar just now. New gatherings are always shared in our newsletter first.';
+    if (note) note.textContent = 'We couldn’t load the calendar just now. New dates are always shared with our mailing list first.';
+    settle();
   }
 }
 

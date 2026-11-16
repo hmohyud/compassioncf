@@ -6,14 +6,17 @@
 
 import * as session from './session.js';
 import { markdown, splitTitle, toDate } from '../cms.js';
-import { fetchChanges, fetchEdits, setEdits, setImages, isStored, sanitize, TEXT_DOC, TEXT_FIELD, IMAGE_FIELD } from '../content.js';
+import { fetchChanges, fetchEdits, setEdits, setImages, isStored, isCurrent, sanitize, TEXT_DOC, TEXT_FIELD, IMAGE_FIELD } from '../content.js';
 
 const root = document.querySelector('[data-admin-app]');
 const SITE = new URL('../../', import.meta.url).href;
 document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: new URL('./admin.css', import.meta.url).href }));
 
-const TABS = [['essays', 'Essays'], ['events', 'Events'], ['inbox', 'Inbox'], ['newsletter', 'Newsletter'], ['text', 'Text and photos']];
-const VOLUNTEER = 'Volunteer sign-up';
+const TABS = [['essays', 'Essays'], ['events', 'Events'], ['inbox', 'Inbox'], ['newsletter', 'Mailing list'], ['text', 'Text and photos']];
+// Notes in the inbox that came from somewhere other than the Contact page, by their subject line.
+// "Volunteer sign-up" is from the volunteer page the site used to have; "Mailing list sign-up" is what
+// shared/forms.js sends when the database won't keep a name and place beside a mailing-list address.
+const NOTE_BADGES = { 'Volunteer sign-up': 'Volunteer', 'Mailing list sign-up': 'Mailing list' };
 
 /* ---------- small helpers ---------- */
 
@@ -147,7 +150,7 @@ async function essays(id) {
   view().innerHTML = `
     ${takeFlash()}
     <div class="adm-head">
-      <div><h2>Essays</h2><p>These appear on the Blog page and under “Latest writing” on the home page.</p></div>
+      <div><h2>Essays</h2><p>The newest three appear on the News and Updates page and under “Latest writing” on the home page. All of them are on the Essays page.</p></div>
       <a class="btn btn-sun sm" href="#essays/new">New essay</a>
     </div>
     ${posts.length ? `<ul class="adm-list">${posts.map((p) => {
@@ -176,7 +179,7 @@ async function essay(id) {
         <div class="field"><label for="e-author">Written by</label><input id="e-author" name="author" maxlength="120" value="${esc(post.author || '')}"></div>
         <div class="field"><label for="e-day">Date</label><input id="e-day" name="day" type="date" required value="${isoDay(when)}"></div>
       </div>
-      <div class="field"><label for="e-excerpt">Summary <small>(optional; if empty, the blog list shows the opening lines)</small></label><textarea id="e-excerpt" name="excerpt" maxlength="600" style="min-height:84px">${esc(post.excerpt || '')}</textarea></div>
+      <div class="field"><label for="e-excerpt">Summary <small>(optional; if empty, the essay’s card shows its opening lines)</small></label><textarea id="e-excerpt" name="excerpt" maxlength="600" style="min-height:84px">${esc(post.excerpt || '')}</textarea></div>
       <div class="field">
         <label for="e-content">Text</label>
         <div class="adm-tools" aria-label="Formatting">
@@ -264,11 +267,11 @@ async function events(id) {
   view().innerHTML = `
     ${takeFlash()}
     <div class="adm-head">
-      <div><h2>Events</h2><p>Upcoming events appear on the Events page. Past ones drop off it by themselves.</p></div>
+      <div><h2>Events</h2><p>Upcoming events appear under “Events” on the News and Updates page, in date order. Past ones drop off it by themselves.</p></div>
       <a class="btn btn-sun sm" href="#events/new">Add an event</a>
     </div>
     <h3 class="adm-group">Upcoming</h3>
-    ${upcoming.length ? `<ul class="adm-list">${upcoming.map(row).join('')}</ul>` : '<p class="adm-empty">Nothing coming up. The Events page shows its “Nothing on the calendar just yet” card.</p>'}
+    ${upcoming.length ? `<ul class="adm-list">${upcoming.map(row).join('')}</ul>` : '<p class="adm-empty">Nothing added here is coming up. The page shows the dates that are written into it, or its “Nothing on the calendar just yet” card once those have passed.</p>'}
     ${past.length ? `<h3 class="adm-group">Past</h3><ul class="adm-list">${past.map(row).join('')}</ul>` : ''}`;
 }
 
@@ -327,10 +330,10 @@ async function inbox() {
   const items = (await session.list('contactSubmissions')).sort((a, b) => (toDate(b.submittedAt) || 0) - (toDate(a.submittedAt) || 0));
   view().innerHTML = `
     ${takeFlash()}
-    <div class="adm-head"><div><h2>Inbox</h2><p>Messages sent through the Contact page, and notes from the Volunteer page.</p></div><p class="adm-meta">${items.length} message${items.length === 1 ? '' : 's'}</p></div>
+    <div class="adm-head"><div><h2>Inbox</h2><p>Messages sent through the Contact page.</p></div><p class="adm-meta">${items.length} message${items.length === 1 ? '' : 's'}</p></div>
     ${items.length ? `<ul class="adm-list">${items.map((m) => `
       <li class="adm-msg">
-        <header><span class="adm-title">${esc(m.subject || '(no subject)')}${m.subject === VOLUNTEER ? '<span class="adm-badge">Volunteer</span>' : ''}</span><span class="adm-meta">${esc(dateTime(toDate(m.submittedAt)))}</span></header>
+        <header><span class="adm-title">${esc(m.subject || '(no subject)')}${Object.hasOwn(NOTE_BADGES, m.subject) ? `<span class="adm-badge">${NOTE_BADGES[m.subject]}</span>` : ''}</span><span class="adm-meta">${esc(dateTime(toDate(m.submittedAt)))}</span></header>
         <p class="adm-sub">From <b>${esc(m.name || 'someone')}</b>${isEmail(m.email) ? ` · <a href="mailto:${esc(m.email)}">${esc(m.email)}</a>` : m.email ? ` · ${esc(m.email)}` : ''}</p>
         <pre>${esc(m.message || '')}</pre>
         <div class="adm-actions">
@@ -342,26 +345,32 @@ async function inbox() {
 }
 
 // Anyone can type anything into the sign-up box, so only what is plainly an email address is copied or
-// downloaded. A spreadsheet program would run a line beginning with = + - or @ as a formula.
+// downloaded. A spreadsheet program would run a cell beginning with = + - or @ as a formula, so a name or
+// place that starts that way is written with an apostrophe in front, which spreadsheets read as plain text.
 const isPlainAddress = (s) => typeof s === 'string' && /^[A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9][A-Za-z0-9.-]*\.[A-Za-z]{2,}$/.test(s);
+const words = (v) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, 200) : '');
+const cell = (v) => { const t = words(v); return `"${(/^[=+\-@]/.test(t) ? `'${t}` : t).replace(/"/g, '""')}"`; };
 
-let addresses = [];
+let addresses = [];   // the addresses to copy
+let people = [];      // the same sign-ups with the name and place each one gave, for the download
 async function newsletter() {
   loading('Loading the list…');
   const items = (await session.list('newsletterSubscriptions'))
-    .map((s) => ({ ...s, email: typeof s.email === 'string' ? s.email.trim() : String(s.email ?? '') }))
+    .map((s) => ({ ...s, email: typeof s.email === 'string' ? s.email.trim() : String(s.email ?? ''), name: words(s.name), location: words(s.location) }))
     .sort((a, b) => (toDate(b.subscribedAt) || 0) - (toDate(a.subscribedAt) || 0));
-  addresses = [...new Set(items.filter((s) => s.isActive !== false && isPlainAddress(s.email)).map((s) => s.email))];
+  const usable = items.filter((s) => s.isActive !== false && isPlainAddress(s.email));
+  addresses = [...new Set(usable.map((s) => s.email))];
+  people = addresses.map((email) => usable.find((s) => s.email === email && (s.name || s.location)) || usable.find((s) => s.email === email));
   const odd = items.filter((s) => !isPlainAddress(s.email)).length;
   view().innerHTML = `
     ${takeFlash()}
     <div class="adm-head">
-      <div><h2>Newsletter</h2><p>People who signed up in the “Letters from the dawn” box. ${addresses.length} address${addresses.length === 1 ? '' : 'es'}.${odd ? ` ${odd} entr${odd === 1 ? 'y doesn’t' : 'ies don’t'} look like an ordinary email address and ${odd === 1 ? 'is' : 'are'} left out when you copy or download.` : ''}</p></div>
+      <div><h2>Mailing list</h2><p>People who signed up in the “Join our Mailing List” box on the News and Updates page, or in the newsletter box the site had before it. ${addresses.length} address${addresses.length === 1 ? '' : 'es'}.${odd ? ` ${odd} entr${odd === 1 ? 'y doesn’t' : 'ies don’t'} look like an ordinary email address and ${odd === 1 ? 'is' : 'are'} left out when you copy or download.` : ''}</p></div>
       <div class="adm-actions">${addresses.length ? '<button type="button" class="btn btn-ink sm" data-act="copy">Copy all addresses</button><button type="button" class="btn btn-line sm" data-act="csv">Download the list</button>' : ''}</div>
     </div>
     <p class="adm-note" data-note role="status"></p>
     ${items.length ? `<ul class="adm-list">${items.map((s) => `
-      <li class="adm-mail"><span><b>${esc(s.email)}</b>${isPlainAddress(s.email) ? '' : '<span class="adm-badge quiet">Left out</span>'}<span class="adm-sub">${esc(longDate(toDate(s.subscribedAt)))}</span></span>
+      <li class="adm-mail"><span><b>${esc(s.email)}</b>${isPlainAddress(s.email) ? '' : '<span class="adm-badge quiet">Left out</span>'}<span class="adm-sub">${esc([s.name, s.location, longDate(toDate(s.subscribedAt))].filter(Boolean).join(' · '))}</span></span>
         <button type="button" class="adm-danger sm" data-del="newsletterSubscriptions/${esc(s.id)}" data-after="#newsletter" data-done="Address removed.">Remove</button></li>`).join('')}</ul>` : '<p class="adm-empty">Nobody has signed up yet.</p>'}`;
 }
 
@@ -378,8 +387,9 @@ async function copyAddresses() {
 }
 
 function downloadAddresses() {
-  const url = URL.createObjectURL(new Blob([`email\n${addresses.join('\n')}\n`], { type: 'text/csv' }));
-  const a = Object.assign(document.createElement('a'), { href: url, download: 'newsletter-addresses.csv' });
+  const rows = people.map((s) => [cell(s.name), cell(s.location), s.email].join(','));   // the address is already known to be plain
+  const url = URL.createObjectURL(new Blob([`﻿name,town or country,email\n${rows.join('\n')}\n`], { type: 'text/csv' }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: 'mailing-list.csv' });
   document.body.append(a);
   a.click();
   a.remove();
@@ -394,7 +404,7 @@ const originalPhoto = (key) => (/^https?:/i.test(key) ? key : SITE + key);
 async function text() {
   loading('Loading the changes…');
   const { edits, images } = await fetchChanges();
-  const keys = Object.keys(edits);
+  const keys = Object.keys(edits).filter(isCurrent);   // wording saved before it was written into the pages themselves is not listed: it is part of the pages now
   const photos = Object.keys(images).filter((k) => isStored(images[k]));
   view().innerHTML = `
     ${takeFlash()}

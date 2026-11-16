@@ -2,15 +2,15 @@
 
     python tools/build_pages.py
 
-Every page except the home page is written whole: about/, programs/ and its three program
-pages, events/, board/, blog/ and blog/post.html, volunteer/, contact/, donate/ and 404.html.
-They share the header, footer and newsletter block defined below, so change those here.
+Every page except the home page is written whole: about/, programs/ and its four program
+pages, news/, board/, blog/ and blog/post.html, contact/, donate/, admin/ and 404.html.
+They share the header and footer defined below, so change those here.
 
 Pages written by this script start with a "Built by" comment. Change them here and run the
 script; edits made in those .html files are overwritten by the next run.
 
-The home page (index.html) is written by hand. This script only replaces its <header> and
-<footer> so they match the other pages.
+The home page (index.html) is written by hand. This script only replaces its <header>, its
+<footer> and its program cards (between the "program cards" comments), so they match the other pages.
 """
 import math, os, re, sys
 
@@ -18,8 +18,9 @@ SITE = sys.argv[1] if len(sys.argv) > 1 else os.path.normpath(os.path.join(os.pa
 
 THOM_IMG = 'https://images.squarespace-cdn.com/content/v1/5dfa821b21876f38ff1126c5/1582068821253-37SLPK803AAVS3ZD061T/TMB-2018-small-4.jpg'
 DEBRA_IMG = 'https://njms.rutgers.edu/mbmapp/public_html/pictures/ChewDebra.jpg'
+HYDER_IMG = '{s}img/hyder-mohyuddin.jpg'   # a file of this site; "{s}" becomes the path to shared/ from each page
 
-NAV = [('about', 'About'), ('programs', 'Programs'), ('events', 'Events'), ('blog', 'Blog'), ('volunteer', 'Get involved'), ('contact', 'Contact')]
+NAV = [('about', 'About'), ('programs', 'Programs'), ('news', 'News and Updates'), ('contact', 'Contact')]
 
 SOCIAL = [
     ('instagram', 'https://www.instagram.com/fromthombond/', 'Instagram', 'Thom Bond on Instagram'),
@@ -59,7 +60,8 @@ def header(r, active, home=False):
     </div>
   </header>'''
 
-def footer(r, home=False, news_href='#newsletter'):
+# The footer's "Quick links" are the pages of the site, in the order of the menu, plus the board page.
+def footer(r, home=False):
     s = r + 'shared/'
     brand = '#top' if home else (r or './')
     return f'''<footer class="ftr">
@@ -73,35 +75,18 @@ def footer(r, home=False, news_href='#newsletter'):
         <h4>Quick links</h4>
         <a href="{r}about/">About us</a>
         <a href="{r}programs/">Programs</a>
-        <a href="{r}events/">Events</a>
-        <a href="{r}blog/">Blog</a>
+        <a href="{r}news/">News and Updates</a>
         <a href="{r}board/">Board members</a>
+        <a href="{r}contact/">Contact us</a>
       </div>
       <div>
-        <h4>Get involved</h4>
+        <h4>Support</h4>
         <a href="{r}donate/" data-donate>Donate</a>
-        <a href="{r}volunteer/">Volunteer</a>
-        <a href="{news_href}">Newsletter</a>
-        <a href="{r}contact/">Contact us</a>
+        <a href="{r}news/#mailing-list">Join our mailing list</a>
       </div>
     </div>
     <div class="wrap ftr-base">© <span data-year>2026</span> Compassion Course Foundation, Inc. All rights reserved.</div>
   </footer>'''
-
-def newsletter(s, n):
-    return f'''<section class="sec news" id="newsletter">
-      <div class="wrap news-in reveal">
-        <img src="{s}img/mark-white.png" alt="" width="64" height="60">
-        <h2>Letters from the dawn</h2>
-        <p>Occasional, hopeful news from our community — stories, events and new ways to take part.</p>
-        <form class="news-form" data-form="newsletter">
-          <label class="sr" for="email{n}">Email address</label>
-          <input id="email{n}" name="email" type="email" required maxlength="200" placeholder="you@example.com" autocomplete="email">
-          <button class="btn btn-sun" type="submit">Subscribe</button>
-          <p class="form-msg" data-form-msg role="status"></p>
-        </form>
-      </div>
-    </section>'''
 
 def sky():
     return '<div class="sky" aria-hidden="true"><div class="stars s1"></div><div class="stars s2"></div><div class="stars s3"></div><div class="dawn"></div></div>'
@@ -132,7 +117,7 @@ def facts(items, cap='', count=False):
     cap_html = f'<p class="facts-cap">{cap}</p>' if cap else ''
     return f'\n          <div class="facts-block"><ul class="facts">{lis}</ul>{cap_html}</div>'
 
-def page(path, title, desc, active, hero, body, n, extra_js='', home_link=False, head='', news=True, body_class=''):
+def page(path, title, desc, active, hero, body, extra_js='', head='', body_class=''):
     depth = path.count('/')  # 'about/index.html' -> 1
     r = '../' * depth
     s = r + 'shared/'
@@ -160,11 +145,9 @@ def page(path, title, desc, active, hero, body, n, extra_js='', home_link=False,
     {hero.replace('{r}', r).replace('{s}', s)}
 
     {body.replace('{r}', r).replace('{s}', s)}
-
-    {newsletter(s, n) if news else ''}
   </main>
 
-  {footer(r, news_href='#newsletter' if news else r + '#newsletter')}
+  {footer(r)}
 
   <script type="module" src="{s}content.js"></script>
   <script type="module" src="{s}site.js"></script>
@@ -204,11 +187,40 @@ def wave_svg():
 
 WAVE = f'<div class="wave-art"><div class="stars s1"></div>{wave_svg()}</div>'
 
+def starmap_svg():
+    # The Observatory's picture: needs as points of light, joined into one map of the sky.
+    nodes = {'a': (240, 205, 7), 'b': (150, 150, 4.5), 'c': (330, 140, 5), 'd': (120, 250, 4), 'e': (205, 300, 5), 'f': (310, 285, 4.5),
+             'g': (380, 220, 4), 'h': (260, 95, 4), 'i': (80, 170, 3), 'j': (410, 130, 3), 'k': (160, 60, 3), 'l': (360, 330, 3),
+             'm': (70, 320, 3), 'n': (430, 290, 2.5)}
+    edges = ['ab', 'ac', 'ae', 'af', 'bd', 'bh', 'ch', 'cg', 'fg', 'ed', 'bi', 'cj', 'hk', 'fl', 'dm', 'gn', 'ef', 'id']
+    lines = ''.join(f'<line x1="{nodes[p][0]}" y1="{nodes[p][1]}" x2="{nodes[q][0]}" y2="{nodes[q][1]}"/>' for p, q in edges)
+    rings = ''.join(f'<circle cx="240" cy="205" r="{r}"/>' for r in (70, 130, 190))
+    halos = ''.join(f'<circle cx="{x}" cy="{y}" r="{r * 2.6:.1f}"/>' for x, y, r in nodes.values() if r >= 4.5)
+    dots = ''.join(f'<circle cx="{x}" cy="{y}" r="{r}"/>' for x, y, r in nodes.values())
+    return ('<svg viewBox="0 0 480 400" aria-hidden="true"><defs><linearGradient id="sm" x1="0" y1="0" x2="1" y2="1">'
+            '<stop offset="0" stop-color="#ffd89a"/><stop offset=".55" stop-color="#f6b860"/><stop offset="1" stop-color="#f08a7a"/></linearGradient></defs>'
+            f'<g fill="none" stroke="#ffd89a" stroke-opacity=".16" stroke-dasharray="2 7">{rings}</g>'
+            f'<g stroke="#ffd89a" stroke-opacity=".42" stroke-width="1.2" stroke-linecap="round">{lines}</g>'
+            f'<g fill="#f6b860" fill-opacity=".16">{halos}</g>'
+            f'<g fill="url(#sm)">{dots}</g></svg>')
+
+STARMAP = f'<div class="wave-art map-art"><div class="stars s1"></div>{starmap_svg()}</div>'
+
+# The programs, in the order they are numbered everywhere: on the programs page, in each page's
+# "Program · 0N", on the home page's cards, in the previous and next links under each program page,
+# and in the lists that name the other programs. To renumber them, change the order here.
+#
+# Their names and words are the foundation's own, as the foundation wrote them in the site's editor
+# in November 2026 (when the first two programs took the names they have here).
 PROGRAMS = [
-    ('compassion-course', 'The Compassion Course', 'A Global Pathway to Peace'),
-    ('course-fund', 'Removing Barriers', 'The Compassion Course Fund'),
-    ('archive', 'The Archive Program', 'A library for the world'),
+    ('scholarship-fund', 'The Peace Engineering Scholarship Fund', 'Ending Financial Gatekeeping in Peace Education'),
+    ('research-initiative', 'The Global Peace Education Research Initiative', 'Peace Education Research On A Global Scale'),
+    ('archive', 'The Archive Program', 'A multilingual, global digital library preserving peace education history'),
+    ('global-needs-observatory', 'The Global Needs Observatory', 'A needs-based framework and infrastructure for peace engineering'),
 ]
+
+def number(slug):
+    return f'{[p[0] for p in PROGRAMS].index(slug) + 1:02d}'
 
 def give_card(kicker, h, p, label):
     return f'''<div class="give-card">
@@ -242,42 +254,14 @@ def pager(current):
 
 GLOBE_FACTS = [('3,898', 'places', '3898'), ('487', 'regions', '487'), ('6', 'continents', '')]
 
-# ---------- programs ----------
-
-course_hero = phero('{r}', 'The Compassion Course', [('Programs', '{r}programs/')], 'Program · 01', 'The Compassion Course', 'A Global Pathway to Peace',
-    extra=facts([('15', 'years', ''), ('32,000+', 'participants', ''), ('120+', 'countries', ''), ('20', 'languages', '')], 'Changing lives around the world'))
-
-course_body = f'''<section class="pbody">
-      <div class="wrap article">
-        <div class="prose">
-          <p class="lead reveal">Changing lives for 15 years, in over 120 countries, in 20 languages. A year-long journey into the practical “how&nbsp;to” of compassion.</p>
-
-          <h2 class="reveal">It has been proven to work</h2>
-          <p class="reveal">The course provides the practical “how to” of creating more understanding, empathy, and compassion in our daily lives. The course starts with foundational concepts and practices that help us understand what engenders compassion and what blocks it, and as the year progresses, we work with more advanced practices that help us effectively bring more compassion into our everyday lives.</p>
-          <ol class="movements reveal" aria-label="How the year unfolds">
-            <li><small>First</small><b>Foundations</b><span>What engenders compassion, and what blocks it.</span></li>
-            <li><small>Then</small><b>Deeper practice</b><span>More advanced practices as the year progresses.</span></li>
-            <li><small>Always</small><b>Everyday life</b><span>Bringing more compassion into our everyday lives.</span></li>
-          </ol>
-
-          <h2 class="reveal">A growing, global community</h2>
-          <p class="reveal">What began as a weekly email to share the tools of compassionate communication has grown into a vibrant community of tens of thousands around the world. Today, The Compassion Course is available in almost every major populated area on earth, on every side of every conflict, in native languages — a single, universal learning and teaching community.</p>
-          <blockquote class="pull reveal">Its success demonstrates that people everywhere want these skills and are eager to integrate them into their families, workplaces, communities, and personal lives.</blockquote>
-          {pager('compassion-course')}
-        </div>
-        <aside class="aside" aria-label="Support and more programs">
-          {give_card('Support this program', 'Open the door for someone new', 'Gifts to the Compassion Course Fund help people join the course who would otherwise face financial or geographic barriers.', 'Give a scholarship')}
-          {other_programs('compassion-course')}
-        </aside>
-      </div>
-    </section>
-
-    <section class="globe-band" aria-labelledby="globe-h">
+# The participant globe, as a band under a program page (the Scholarship Fund and the Research Initiative).
+def globe_band():
+    return f'''<section class="globe-band" aria-labelledby="globe-h">
       <div class="sky" aria-hidden="true"><div class="stars s1"></div><div class="stars s2"></div><div class="stars s3"></div></div>
       <div class="wrap globe-band-in">
         <div class="copy reveal">
           <p class="eyebrow"><span class="dot"></span>Community member globe</p>
-          <h2 id="globe-h">A world already practising <em>compassion</em></h2>
+          <h2 id="globe-h">A world already practicing <em>compassion</em></h2>
           <p>Every point of light is a place where people have joined the Compassion Course. Drag the globe to explore, and look for your own corner of the world.</p>{facts(GLOBE_FACTS, 'where people have joined the course')}
         </div>
         <div class="hero-globe">
@@ -287,22 +271,26 @@ course_body = f'''<section class="pbody">
       </div>
     </section>'''
 
-course_js = '''
+GLOBE_JS = '''
   <script type="module">
     import { lazyGlobe } from '{s}globe-lazy.js';
     lazyGlobe(document.getElementById('globe'), { marker: '246,184,96', hover: '240,120,100', maxSize: 620 });
   </script>'''
 
-fund_hero = phero('{r}', 'Removing Barriers', [('Programs', '{r}programs/')], 'Program · 02', 'Removing Barriers', 'The Compassion Course Fund',
+# The sentence that closes a program page, and the two buttons under it, in the foundation's wording.
+HEAR_FROM_YOU = 'If you would like to contribute to this program, or would like to know more, we’d love to hear from you.'
+
+# ---------- programs ----------
+
+fund_hero = phero('{r}', 'The Peace Engineering Scholarship Fund', [('Programs', '{r}programs/')], f'Program · {number("scholarship-fund")}', 'The Peace Engineering Scholarship Fund', 'Ending Financial Gatekeeping in Peace Education',
     lede='Scholarships and logistical support, so that peace education is never limited by privilege or circumstance.')
 
 fund_body = f'''<section class="pbody">
       <div class="wrap article">
         <div class="prose">
-          <p class="lead reveal">To ensure that peace education is available to all, the Compassion Course Fund provides scholarships and logistical support to individuals and groups who would otherwise face financial or geographic barriers.</p>
+          <p class="lead reveal">To ensure that peace education is available to all, the Fund provides scholarships and logistical support to individuals and groups who would otherwise face financial or geographic barriers</p>
 
           <h2 class="reveal">What the Fund does</h2>
-          <p class="reveal">By doing so, the Fund:</p>
           <ul class="benefits">
             <li class="reveal"><span>01</span>Expands global access to high-quality peace education</li>
             <li class="reveal"><span>02</span>Supports underserved communities, including those affected by conflict, displacement, or economic hardship</li>
@@ -310,111 +298,162 @@ fund_body = f'''<section class="pbody">
             <li class="reveal"><span>04</span>Strengthens networks of peace-builders who bring these skills back to their families, organizations, and communities</li>
           </ul>
 
-          <blockquote class="pull reveal">The Fund ensures that the benefits of the Compassion Course are not limited by privilege or circumstance.</blockquote>
-          <p class="reveal">It fuels a movement that empowers people everywhere to contribute to a more peaceful world.</p>
+          <blockquote class="pull reveal">The Fund ensures that the benefits of peace education are not limited by privilege or circumstance.</blockquote>
 
           <div class="callout reveal">
-            <h2>Contribute to the Fund</h2>
-            <p>If you would like to know more, or would like to contribute to this program, we’d love to hear from you.</p>
+            <h2>Help make a difference</h2>
+            <p>{HEAR_FROM_YOU}</p>
             <div class="cta">
-              <a class="btn btn-sun" href="{{r}}donate/" data-donate>Give to the Fund</a>
-              <a class="btn btn-line" href="{{r}}volunteer/">Get in touch</a>
+              <a class="btn btn-sun" href="{{r}}donate/" data-donate>Donate here</a>
+              <a class="btn btn-line" href="{{r}}contact/">Contact us</a>
             </div>
           </div>
-          {pager('course-fund')}
+          {pager('scholarship-fund')}
         </div>
         <aside class="aside" aria-label="Support and more programs">
-          {give_card('Fund a scholarship', 'Every gift opens a door', 'Your gift goes to scholarships and support for people who couldn’t otherwise take part.', 'Donate to the Fund')}
-          {other_programs('course-fund')}
+          {give_card('Support this program', 'Access Matters', 'Your gift funds scholarships and peace education programs throughout the world', 'Donate here')}
+          {other_programs('scholarship-fund')}
         </aside>
       </div>
-    </section>'''
+    </section>
 
-archive_hero = phero('{r}', 'The Archive Program', [('Programs', '{r}programs/')], 'Program · 03', 'The Archive Program', 'Preserving almost 25 years of compassion teaching',
-    extra=facts([('Hundreds', 'of hours', ''), ('~25', 'years', ''), ('249', 'languages', '')], 'Becoming an online library of audio courses'))
+    {globe_band()}'''
+
+# This page was "The Compassion Course" until the foundation rewrote it in the editor as its research program.
+research_hero = phero('{r}', 'The Global Peace Education Research Initiative', [('Programs', '{r}programs/')], f'Program · {number("research-initiative")}', 'The Global Peace Education Research Initiative', 'Peace Education Research On A Global Scale')
+
+research_body = f'''<section class="pbody">
+      <div class="wrap article">
+        <div class="prose">
+          <p class="lead reveal">Using validated psychological instruments and real human stories to measure how compassion training transforms conflict behavior across borders</p>
+
+          <h2 class="reveal">Why Research Matters</h2>
+          <p class="reveal">To scale peace education worldwide, educators, policymakers, and funders need scientific evidence that peace education training creates lasting behavioral change for compassion and conflict-resolution. We will analyze behavioral shifts across thousands of learners from diverse backgrounds and regions within our global Compassion Course community. Through robust qualitative and quantitative science, we aim to capture the impact of our training and behavioral shifts in nonviolent communication, self-compassion and empathy.</p>
+          {pager('research-initiative')}
+        </div>
+        <aside class="aside" aria-label="Support and more programs">
+          {give_card('Support this program', 'Science matters', 'Your gift funds peace education research on a global scale', 'Donate here')}
+          {other_programs('research-initiative')}
+        </aside>
+      </div>
+    </section>
+
+    {globe_band()}'''
+
+archive_hero = phero('{r}', 'The Archive Program', [('Programs', '{r}programs/')], f'Program · {number("archive")}', 'The Archive Program', 'Preserving 25 years of peace education history',
+    extra=facts([('Hundreds', 'of hours', ''), ('25', 'years', ''), ('249', 'languages', '')], 'Becoming an online library of audio courses'))
 
 archive_body = f'''<section class="pbody">
       <div class="wrap article">
         <div class="prose">
-          <p class="lead reveal">The CCF has acquired hundreds of hours of digital content, reaching back almost 25 years, of Compassion Course conferences and workshops.</p>
+          <p class="lead reveal">Creating a multi-lingual, global library by digitizing, translating, and indexing 25 years of archival materials from The Compassion Course conferences, workshops, and teachings from pioneers in nonviolent communication</p>
 
           <h2 class="reveal">Voices in the collection</h2>
           <ul class="voices reveal">
-            <li><b>Thom Bond</b><span>Creator of The Compassion Course</span></li>
-            <li><b>Robert Gonzales</b><span>Conference and workshop content</span></li>
-            <li><b>Marshall Rosenberg</b><span>Never-before-seen 720p video</span></li>
+            <li><b>Thom Bond</b><span>Founder of The Compassion Course, Co-Founder of the New York Center for Nonviolent Communication (NYCNVC), and Author of The Compassion Book</span></li>
+            <li><b>Robert Gonzales</b><span>Founder of The Center for Living Compassion and Pioneer in Spiritual Psychology</span></li>
+            <li><b>Marshall Rosenberg</b><span>Founder of Nonviolent Communication and Author of Nonviolent Communication: A Language of Life</span></li>
           </ul>
 
           <h2 class="reveal">From recordings to a living library</h2>
-          <p class="reveal">The Archive Program is tasked with acquiring, protecting, translating, organizing and distributing this knowledge in the form of an online library of audio courses in 249 languages.</p>
+          <p class="reveal">The Archive Program is tasked with acquiring, preserving, translating, organizing and distributing the teachings in the form of an online library of audio courses in 249 languages.</p>
           <ol class="timeline reveal">
             <li class="done"><b>Acquire</b><span class="tag">Complete</span><span>Gathering decades of conference and workshop recordings.</span></li>
-            <li><b>Protect</b><span>Preserving the original recordings for the long term.</span></li>
-            <li><b>Translate</b><span>Carrying the teaching into 249 languages.</span></li>
-            <li><b>Organize</b><span>Shaping the material into audio courses.</span></li>
-            <li><b>Distribute</b><span>Opening it to the world as an online library.</span></li>
+            <li><b>Protect</b><span>Protecting the original recordings for posterity.</span></li>
+            <li><b>Translate</b><span>Translating the teachings throughout the globe in 249 languages.</span></li>
+            <li><b>Organize</b><span>Organizing a searchable resource, carefully curated for reference and self-study.</span></li>
+            <li><b>Distribute</b><span>Distributing our digital library around the world.</span></li>
           </ol>
-          <p class="reveal">The first phase of content acquisition is complete and will shift to maintenance mode after the virtual library opens. The target date for opening is June 24, 2026.</p>
 
           <div class="callout reveal">
-            <h2>Help build the library</h2>
-            <p>If you would like to know more, or would like to contribute to this program, we’d love to hear from you.</p>
+            <h2>Help us build the library</h2>
+            <p>{HEAR_FROM_YOU}</p>
             <div class="cta">
-              <a class="btn btn-ink" href="{{r}}volunteer/">Get in touch</a>
-              <a class="btn btn-line" href="{{r}}donate/" data-donate>Support the archive</a>
+              <a class="btn btn-ink" href="{{r}}contact/">Contact us</a>
+              <a class="btn btn-line" href="{{r}}donate/" data-donate>Support this Program</a>
             </div>
           </div>
           {pager('archive')}
         </div>
         <aside class="aside" aria-label="Support and more programs">
-          {give_card('Support the archive', 'Keep the teaching alive', 'Help protect, translate and share decades of compassion teaching with the world.', 'Give to the archive')}
+          {give_card('Support the archive', 'Information Matters', 'Help preserve and share decades of compassion-centered teaching around the world.', 'Donate here')}
           {other_programs('archive')}
         </aside>
       </div>
     </section>'''
 
+# The fourth program is still forming. Its text is the foundation's own; the three-line summary under it
+# only restates that paragraph.
+obs_hero = phero('{r}', 'The Global Needs Observatory', [('Programs', '{r}programs/')], f'Program · {number("global-needs-observatory")} · Forming', 'The Global Needs Observatory', 'A needs-based framework and infrastructure for peace engineering')
+
+obs_body = f'''<section class="pbody">
+      <div class="wrap article">
+        <div class="prose">
+          <p class="lead reveal">Mapping universal human needs, procuring resource data, and applying Intelligence to create breakthrough conflict resolution strategies.</p>
+
+          <h2 class="reveal">What the Observatory is</h2>
+          <p class="reveal">Rooted in the Needs Awareness framework, the <strong>Global Needs Awareness Observatory</strong> is a scientifically credible system to identify and track universal human needs (such as autonomy, connection, meaning, safety, nutrition, security) on an individual, group, community and regional level, intelligently linking lived experiences to verified local resources.</p>
+          <dl class="glance reveal">
+            <div><dt>Tracks</dt><dd>Universal human needs, such as autonomy, connection, meaning, safety, nutrition and security</dd></div>
+            <div><dt>Across</dt><dd>Individual, group, community and regional levels</dd></div>
+            <div><dt>Links</dt><dd>Lived experiences to verified local resources</dd></div>
+          </dl>
+
+          <div class="callout reveal">
+            <h2>This program is forming</h2>
+            <p>{HEAR_FROM_YOU}</p>
+            <div class="cta">
+              <a class="btn btn-ink" href="{{r}}contact/">Contact us</a>
+              <a class="btn btn-line" href="{{r}}donate/" data-donate>Support this Program</a>
+            </div>
+          </div>
+          {pager('global-needs-observatory')}
+        </div>
+        <aside class="aside" aria-label="Support and more programs">
+          {give_card('Support this program', 'Help peace education reach everyone', 'Your gift funds scholarships and peace education programs throughout the world', 'Donate here')}
+          {other_programs('global-needs-observatory')}
+        </aside>
+      </div>
+    </section>'''
+
 programs_hero = phero('{r}', 'Programs', [], 'Our programs', 'Ways we bring compassion <em>to life</em>',
-    lede='Three programs, one purpose: meaningful, proven and lasting peace education for everyone, everywhere.')
+    lede='Four programs, one purpose: meaningful, proven and lasting peace education for everyone, everywhere.')
+
+# What the programs page shows for each program: its picture, a few lines, the link's words, and a status if it has one.
+PROGRAM_ROWS = {
+    'scholarship-fund': ('<img src="{s}img/hands.jpg" alt="" loading="lazy">', 'Scholarships and logistical support, so that peace education is never limited by privilege or circumstance.', 'See more about the fund', ''),
+    'research-initiative': ('<img src="{s}img/online.jpg" alt="" loading="lazy">', 'Evaluating the impact of peace education training with robust science', 'See how the initiative works', ''),
+    'archive': (WAVE, '25 years of compassion-centered teaching are digitized, translated, and indexed into a global online library in 249 languages', 'Inside the archive', ''),
+    'global-needs-observatory': (STARMAP, 'Mapping universal human needs, procuring resource data, and applying Intelligence to create breakthrough conflict resolution strategies.', 'Inside the Observatory', 'Forming'),
+}
+
+def program_rows():
+    rows = []
+    for slug, title, sub in PROGRAMS:
+        media, text, label, status = PROGRAM_ROWS[slug]
+        tag = f' <span class="status">{status}</span>' if status else ''
+        rows.append(f'''<article class="prog reveal">
+          <a class="prog-media" href="{slug}/" tabindex="-1" aria-hidden="true">{media}</a>
+          <div>
+            <p class="prog-n">{number(slug)} — Program{tag}</p>
+            <h2><a href="{slug}/">{title}</a></h2>
+            <p class="prog-sub">{sub}</p>
+            <p>{text}</p>
+            <a class="more" href="{slug}/">{label} <span aria-hidden="true">→</span></a>
+          </div>
+        </article>''')
+    return '\n        '.join(rows)
 
 programs_body = f'''<section class="pbody">
       <div class="wrap prog-list">
-        <article class="prog reveal">
-          <a class="prog-media" href="compassion-course/" tabindex="-1" aria-hidden="true"><img src="{{s}}img/online.jpg" alt="" loading="lazy"></a>
-          <div>
-            <p class="prog-n">01 — Program</p>
-            <h2><a href="compassion-course/">The Compassion Course</a></h2>
-            <p class="prog-sub">A Global Pathway to Peace</p>
-            <p>The practical “how to” of creating more understanding, empathy and compassion in daily life. Changing lives for 15 years, in over 120 countries and 20 languages.</p>
-            <a class="more" href="compassion-course/">Explore the course <span aria-hidden="true">→</span></a>
-          </div>
-        </article>
-        <article class="prog reveal">
-          <a class="prog-media" href="course-fund/" tabindex="-1" aria-hidden="true"><img src="{{s}}img/hands.jpg" alt="" loading="lazy"></a>
-          <div>
-            <p class="prog-n">02 — Program</p>
-            <h2><a href="course-fund/">Removing Barriers</a></h2>
-            <p class="prog-sub">The Compassion Course Fund</p>
-            <p>Scholarships and logistical support for individuals and groups who would otherwise face financial or geographic barriers to peace education.</p>
-            <a class="more" href="course-fund/">See how the Fund works <span aria-hidden="true">→</span></a>
-          </div>
-        </article>
-        <article class="prog reveal">
-          <a class="prog-media" href="archive/" tabindex="-1" aria-hidden="true">{WAVE}</a>
-          <div>
-            <p class="prog-n">03 — Program</p>
-            <h2><a href="archive/">The Archive Program</a></h2>
-            <p class="prog-sub">A library for the world</p>
-            <p>Hundreds of hours of teaching, reaching back almost 25 years, becoming an online library of audio courses in 249 languages.</p>
-            <a class="more" href="archive/">Inside the archive <span aria-hidden="true">→</span></a>
-          </div>
-        </article>
+        {program_rows()}
       </div>
     </section>'''
 
 # ---------- about ----------
 
 about_hero = phero('{r}', 'About', [], 'About us', 'Peace education for <em>everyone</em>',
-    lede='The Compassion Course Foundation, Inc. is a 501(c)(3) nonprofit dedicated to helping individuals gain access to meaningful, proven and lasting peace education, and ultimately co-creating a more humane and sustainable world.')
+    lede='The Compassion Course Foundation Inc is a 501(c)(3) nonprofit dedicated to helping individuals gain access to meaningful, proven and lasting peace education, and ultimately co-creating a more humane and sustainable world.')
 
 about_body = f'''<section class="pbody">
       <div class="wrap why-grid">
@@ -450,14 +489,29 @@ about_body = f'''<section class="pbody">
           <article class="mv-card reveal">
             <span class="mv-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="9" fill="none" stroke="currentColor" stroke-width="2.5"/><g stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M24 4v6M24 38v6M4 24h6M38 24h6M9.9 9.9l4.2 4.2M33.9 33.9l4.2 4.2M9.9 38.1l4.2-4.2M33.9 14.1l4.2-4.2"/></g></svg></span>
             <h2>Our Mission</h2>
-            <p>To foster compassion and understanding through educational programs and community initiatives that bring people together.</p>
+            <p>To increase the quality and sustainability of life by maintaining, improving, and expanding our global peace education network</p>
           </article>
           <article class="mv-card reveal">
             <span class="mv-ico" aria-hidden="true"><svg viewBox="0 0 48 48"><path d="M4 32h40" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M12 32a12 12 0 0 1 24 0" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M10 40h28" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity=".5"/></svg></span>
             <h2>Our Vision</h2>
-            <p>A world where compassion guides our interactions and creates positive change in communities everywhere.</p>
+            <p>A world where peace is learned, practiced, and shared</p>
           </article>
         </div>
+      </div>
+    </section>
+
+    <section class="sec history" aria-labelledby="history-h">
+      <div class="wrap history-grid">
+        <div class="history-head reveal">
+          <p class="kicker">Since 2002</p>
+          <h2 class="big" id="history-h">Our <em>History</em></h2>
+          <p class="history-lead">The Compassion Course Foundation, Inc. is the culmination of more than two decades of educational innovation, community building, and dedication to a simple yet profound idea: peace can be learned, practiced, and shared.</p>
+        </div>
+        <ol class="history-steps">
+          <li class="reveal"><b>2002</b><p>Our story began in 2002 when Cofounder and Executive Director Thom Bond encountered the work of Marshall Rosenberg, the creator of Nonviolent Communication (NVC). In 2003, Thom, Marshall Rosenberg, and Nellie Bright co-founded the New York Center for Nonviolent Communication (NYCNVC) with a growing community of educators and practitioners, establishing a hub for compassionate living centered on Needs Awareness—the recognition that universal human needs are fundamental to understanding ourselves, one another, and conflict.</p></li>
+          <li class="reveal"><b>2011</b><p>Over the following years, this approach evolved into a comprehensive educational methodology. In 2011, Thom launched The Compassion Course, a structured, year-long online framework grounded in NVC and Needs Awareness that has since served over 50,000 registrants across 120 countries in 20 languages. This global curriculum also became the basis for <em>The Compassion Book</em>, providing practical tools for readers, educators, and practice groups seeking deeper understanding and cooperation.</p></li>
+          <li class="reveal"><b>Today</b><p>Today, The Compassion Course Foundation, Inc. represents the next stage of this movement. By transforming an established educational network into a sustainable international resource, the Foundation expands global community coordination and meets the growing worldwide demand for accessible peace education.</p></li>
+        </ol>
       </div>
     </section>
 
@@ -477,7 +531,11 @@ about_body = f'''<section class="pbody">
           </a>
           <a class="mini reveal" href="{{r}}board/#debra-chew">
             <div class="portrait"><img src="{DEBRA_IMG}" alt="" loading="lazy"></div>
-            <div><b>Dr. Debra Chew, M.D.</b><small>Treasurer</small></div>
+            <div><b>Debra Chew, M.D., M.P.H</b><small>Secretary and Treasurer</small></div>
+          </a>
+          <a class="mini reveal" href="{{r}}board/#hyder-mohyuddin">
+            <div class="portrait"><img src="{HYDER_IMG}" alt="" loading="lazy"></div>
+            <div><b>Hyder Mohyuddin</b><small>Chief Information Officer</small></div>
           </a>
         </div>
       </div>
@@ -492,20 +550,20 @@ about_body = f'''<section class="pbody">
         <div class="ways">
           <a class="way reveal" href="{{r}}donate/" data-donate>
             <span class="way-n">Give</span>
-            <h3>Donate</h3>
-            <p>Fund scholarships and community programs that make peace education possible.</p>
-            <span class="arrow" aria-hidden="true">→</span>
-          </a>
-          <a class="way reveal" href="{{r}}volunteer/">
-            <span class="way-n">Serve</span>
-            <h3>Volunteer</h3>
-            <p>Lend your time and talents to a growing, global community of practice.</p>
+            <h3>Donate here</h3>
+            <p>Fund scholarships and peace education programs</p>
             <span class="arrow" aria-hidden="true">→</span>
           </a>
           <a class="way reveal" href="{{r}}programs/">
             <span class="way-n">Learn</span>
             <h3>Participate</h3>
             <p>Take a course, join an event, and bring what you learn home to the people you love.</p>
+            <span class="arrow" aria-hidden="true">→</span>
+          </a>
+          <a class="way reveal" href="{{r}}news/">
+            <span class="way-n">Follow</span>
+            <h3>Stay in touch</h3>
+            <p>Read the latest essays, listen to the podcast, and join our mailing list.</p>
             <span class="arrow" aria-hidden="true">→</span>
           </a>
         </div>
@@ -524,52 +582,148 @@ board_body = f'''<section class="pbody">
           <div class="reveal">
             <p class="kicker">Cofounder and Executive Director</p>
             <h2>Thom Bond</h2>
-            <p>Thom Bond is best known as the creator and leader of The Compassion Course, a comprehensive online training that has served over 32,000 participants and been translated into 20 languages in over 120 countries.</p>
+            <p>Thom Bond is best known as the creator and leader of The Compassion Course, a comprehensive online training that has served over 50,000 participants and been translated into 20 languages in over 120 countries.</p>
             <p>Thom is the author of The Compassion Book, the creator of “The Exercise – Shifting Toward Compassion” (<a href="https://theexercise.org" target="_blank" rel="noopener">theexercise.org</a>), and “64 Days for Peace”, an open source, online, self-led small-group introductory curriculum.</p>
             <p>He is a founder and the Director of Education for NYCNVC (The New York Center for Nonviolent Communication, a United Nations Civil Society Organization) and the founder and Director of Education for Bushfield Farms (a demonstration farm and educational center, focused on sustainability and social reform). He is a former member and Advisory Board Member for the Communications Coordination Committee for the United Nations (CCCUN).</p>
             {social('{s}', 'social light')}
           </div>
         </article>
         <article class="member" id="debra-chew">
-          <div class="portrait reveal"><img src="{DEBRA_IMG}" alt="Dr. Debra Chew" loading="lazy"></div>
+          <div class="portrait reveal"><img src="{DEBRA_IMG}" alt="Debra Chew" loading="lazy"></div>
           <div class="reveal">
-            <p class="kicker">Treasurer</p>
-            <h2>Dr. Debra Chew, M.D.</h2>
-            <p>Dr. Debra Chew, M.D., MPH, is a physician, epidemiologist, public health leader, and educator committed to advancing compassionate, evidence-based care. She has worked in academia and the public health sector, most recently as the Associate Professor of Medicine at Rutgers New Jersey Medical School and University Hospital in Newark, NJ.</p>
-            <p>She has more than three decades of experience in patient care, medical education, and scientific research, and has been the Principal Investigator and Co-Investigator of numerous National Institutes of Health grants.</p>
-            <p>Equally important to her is the human side of medicine. Dr. Chew has trained in Nonviolent Communication and Needs Based Awareness, reflecting her belief that healing requires empathy, respect, and human connection. She has particular interest in advancing research in peace education.</p>
+            <p class="kicker">Secretary and Treasurer</p>
+            <h2>Debra Chew, M.D., M.P.H</h2>
+            <p>Dr. Debra Chew, M.D., MPH, is a physician, epidemiologist, educator, and public health leader committed to advancing compassionate, evidence-based care. She has more than three decades of experience in patient care, medical education, hospital leadership, and scientific research, in academia and public health, most recently as the Associate Professor of Medicine at Rutgers New Jersey Medical School and University Hospital in Newark, New Jersey.</p>
+            <p>Dr. Chew has trained in Nonviolent Communication and Needs Based Awareness, as a participant of The Compassion Course. She will help lead the Global Peace Education Research Initiative.</p>
+          </div>
+        </article>
+        <article class="member" id="hyder-mohyuddin">
+          <div class="portrait reveal"><img src="{HYDER_IMG}" alt="Hyder Mohyuddin" loading="lazy"></div>
+          <div class="reveal">
+            <p class="kicker">Chief Information Officer</p>
+            <h2>Hyder Mohyuddin</h2>
+            <p>Hyder Mohyuddin is a software engineer who built this website and maintains the Compassion Course’s online platform.</p>
+            <p>Hyder studied Computer Science, with a minor in Visual Arts, at the University of Chicago, and worked there on generative image research. A tutor since 2016, Hyder has also helped teach coding with Code Platoon and Code Your Dreams.</p>
           </div>
         </article>
       </div>
     </section>'''
 
-# ---------- events ----------
+# ---------- news and updates: things to read and listen to, the dates coming up, and the mailing list ----------
 
-events_hero = phero('{r}', 'Events', [], 'Events', 'Gather, learn and <em>practise</em>',
-    lede='Workshops, gatherings and online sessions from the Compassion Course community.')
+SKEL = '<article class="post-card skel"><div class="post-art"></div><div class="post-text"><i></i><i></i><i></i><i></i></div></article>'
 
-events_body = f'''<section class="pbody">
-      <div class="wrap" data-cms="events">
-        <div class="ev-skel" data-events-loading aria-label="Loading events"><i></i><i></i></div>
-        <ol class="events" data-events-list hidden></ol>
-        <div class="empty" data-events-empty hidden>
-          {ICON['horizon']}
-          <h2>Nothing on the calendar just yet</h2>
-          <p data-events-note>New gatherings are shared in our newsletter first. In the meantime, explore our programs or join the newsletter below.</p>
-          <div class="cta">
-            <a class="btn btn-ink" href="{{r}}programs/">Explore programs</a>
-            <a class="btn btn-line" href="#newsletter">Join the newsletter</a>
+news_hero = phero('{r}', 'News and Updates', [], 'From the Foundation', 'News and <em>Updates</em>',
+    lede='Explore our educational resources, see what is coming up, and join our mailing list.')
+
+# The podcast's own address, engineeringpeace.com, forwards to this page, but only over plain http.
+PODCAST = 'https://thombond.buzzsprout.com/'
+# The episodes the foundation recommends: the title as the foundation gave it, the length, and the episode's page.
+EPISODES = [
+    ('What Peace Sounds Like', '12 min', 'https://thombond.buzzsprout.com/902635/episodes/2872339-what-peace-sounds-like'),
+    ('Peace Educators Speak Out: Tending the Garden of Peace', '71 min', 'https://thombond.buzzsprout.com/902635/episodes/14877502-peace-educators-speak-out-tending-the-garden-of-nonviolence-in-2024'),
+    ('Waging Peace from New York to Tel Aviv', '46 min', 'https://thombond.buzzsprout.com/902635/episodes/15239725-waging-peace-from-new-york-to-tel-aviv-the-work-dreams-and-sorrows'),
+]
+NEEDS_LIST = 'https://static1.squarespace.com/static/5d4cf8c40e6b2e00019c54ae/t/5d785c3c4163c45846e8f54c/1568169020460/needs.pdf'
+
+def episodes():
+    return ''.join(f'''
+              <li><a href="{url}" target="_blank" rel="noopener"><span class="ep-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M8.5 5.6v12.8l10.6-6.4z"/></svg></span><span class="ep-text"><b>{title}</b><small>{length}</small></span></a></li>''' for title, length, url in EPISODES)
+
+# Dates written into the page. Each has data-until, its last day: after that day shared/cms.js takes it
+# off the page, so nothing here goes stale. Events added in the editor join the same list, in date order
+# (data-date is where a date sorts).
+def fixed_event(day, month, year, title, when, datetime, sort, until):
+    badge = f'<b>{day}</b><span>{month}</span><small>{year}</small>' if day else f'<b>{month}</b><small>{year}</small>'
+    return f'''<li class="event" data-date="{sort}" data-until="{until}">
+                <div class="event-date{'' if day else ' month'}" aria-hidden="true">{badge}</div>
+                <div>
+                  <h3>{title}</h3>
+                  <p class="event-meta"><time datetime="{datetime}">{when}</time></p>
+                  <a class="more" href="{{r}}donate/" data-donate>Donate <span aria-hidden="true">→</span></a>
+                </div>
+              </li>'''
+
+FIXED_EVENTS = '\n              '.join([
+    fixed_event('31', 'Dec', '2026', 'Deadline for 2026 tax year donations', 'Thursday, December 31, 2026', '2026-12-31', '2026-12-31', '2026-12-31'),
+    fixed_event('', 'Dec', '2026', '4th Quarter Fundraiser', 'December 2026', '2026-12', '2026-12-31', '2026-12-31'),
+])
+
+news_body = f'''<section class="pbody paper" id="resources">
+      <div class="wrap">
+        <div class="sec-head reveal">
+          <p class="kicker">Read, listen, practice</p>
+          <h2 class="big">Explore our educational <em>resources</em></h2>
+        </div>
+
+        <div class="res" data-cms="blog-list" data-href="{{r}}blog/post.html?id=" data-limit="3">
+          <div class="res-head reveal">
+            <div>
+              <h3>Read our latest blog posts</h3>
+              <p>Essays and reflections on peace</p>
+            </div>
+            <a class="more" href="{{r}}blog/" data-cms-more hidden>All essays <span aria-hidden="true">→</span></a>
           </div>
+          <div class="posts" data-posts>{SKEL * 3}</div>
+          <p class="cms-note" data-cms-empty hidden>No essays yet. Check back soon.</p>
+          <p class="cms-note" data-cms-error hidden>We couldn’t load the essays just now. Please try again in a moment.</p>
+        </div>
+
+        <div class="res-pair">
+          <div class="pod reveal">
+            <span class="pod-ico" aria-hidden="true"><svg><use href="{{s}}img/social.svg#podcast"/></svg></span>
+            <h3>Tune into recommended podcast episodes</h3>
+            <p class="pod-show"><a href="{PODCAST}" target="_blank" rel="noopener">Engineering Peace with Thom Bond</a></p>
+            <ol class="eps">{episodes()}
+            </ol>
+            <a class="more" href="{PODCAST}" target="_blank" rel="noopener">All episodes <span aria-hidden="true">→</span></a>
+          </div>
+          <div class="needs-card reveal">
+            <span class="mv-ico" aria-hidden="true">{ICON['heart']}</span>
+            <h3>Feelings and Needs List</h3>
+            <p>A printable reference to keep beside you as you practice.</p>
+            <a class="btn btn-ink" href="{NEEDS_LIST}" target="_blank" rel="noopener">Open the list <small>(PDF)</small></a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec dates" id="events">
+      <div class="wrap split news-split">
+        <div>
+          <div class="sec-head reveal">
+            <p class="kicker">Dates to know</p>
+            <h2 class="big">Events</h2>
+          </div>
+          <div data-cms="events">
+            <ol class="events" data-events-list>
+              {FIXED_EVENTS}
+            </ol>
+            <div class="empty" data-events-empty hidden>
+              {ICON['horizon']}
+              <h3>Nothing on the calendar just yet</h3>
+              <p data-events-note>New dates are shared with our mailing list first.</p>
+            </div>
+          </div>
+        </div>
+        <div class="form-card reveal" id="mailing-list">
+          <h2>Join our Mailing List</h2>
+          <p>News from the Foundation, new essays and upcoming events, by email.</p>
+          <form class="form" data-form="newsletter">
+            <div class="field"><label for="ml-name">Name</label><input id="ml-name" name="name" required maxlength="120" autocomplete="name"></div>
+            <div class="field"><label for="ml-place">Town / country <small>(optional)</small></label><input id="ml-place" name="location" maxlength="120"></div>
+            <div class="field"><label for="ml-email">Email</label><input id="ml-email" name="email" type="email" required maxlength="200" autocomplete="email"></div>
+            <button class="btn btn-sun" type="submit">Join the mailing list</button>
+            <p class="form-msg" data-form-msg role="status"></p>
+          </form>
         </div>
       </div>
     </section>'''
 
-# ---------- blog ----------
+# ---------- essays: the full list, and one essay. They belong to News and Updates ----------
 
-blog_hero = phero('{r}', 'Blog', [], 'Blog', 'Writing on <em>peace</em>',
+blog_hero = phero('{r}', 'Essays', [('News and Updates', '{r}news/')], 'Essays', 'Writing on <em>peace</em>',
     lede='Essays and reflections from Thom Bond and the Compassion Course community.')
-
-SKEL = '<article class="post-card skel"><div class="post-art"></div><div class="post-text"><i></i><i></i><i></i><i></i></div></article>'
 
 blog_body = f'''<section class="pbody paper">
       <div class="wrap" data-cms="blog-list" data-href="post.html?id=">
@@ -583,7 +737,7 @@ post_hero = f'''<section class="phero post" data-cms="blog-post">
       {sky()}
       <div class="wrap">
         <div class="phero-in">
-          {crumbs('{r}', [('Blog', '{r}blog/')])}
+          {crumbs('{r}', [('News and Updates', '{r}news/')])}
           <p class="eyebrow"><span class="dot"></span>Essay</p>
           <h1 data-post-title><span class="ph-skel"></span><span class="ph-skel short"></span></h1>
           <p class="phero-sub" data-post-sub hidden></p>
@@ -612,51 +766,6 @@ post_body = f'''<section class="pbody">
       </div>
     </section>'''
 
-# ---------- volunteer ----------
-
-vol_hero = phero('{r}', 'Get involved', [], 'Get involved', 'Lend your <em>light</em>',
-    lede='Join our mission as a volunteer. Tell us a little about yourself and how you’d like to help, and we’ll be in touch.')
-
-vol_body = f'''<section class="pbody">
-      <div class="wrap split">
-        <div class="split-head">
-          <p class="kicker reveal">Where help goes furthest</p>
-          <h2 class="big reveal">Every act of compassion travels <em>further</em> than we can see.</h2>
-          <p class="reveal">Whether you have an hour a month or a skill to share, there’s a place for you in this community.</p>
-          <div class="helps">
-            <div class="help reveal"><span class="mv-ico" aria-hidden="true">{ICON['translate']}</span><h3>Translate</h3><p>The course is shared in 20 languages, and the archive aims for 249. Help carry the work into yours.</p></div>
-            <div class="help reveal"><span class="mv-ico" aria-hidden="true">{ICON['archive']}</span><h3>Preserve</h3><p>Help the <a href="{{r}}programs/archive/">Archive Program</a> protect and organize almost 25 years of recordings.</p></div>
-            <div class="help reveal"><span class="mv-ico" aria-hidden="true">{ICON['connect']}</span><h3>Connect</h3><p>Bring peace education to your school, workplace or neighbourhood.</p></div>
-            <div class="help reveal"><span class="mv-ico" aria-hidden="true">{ICON['heart']}</span><h3>Give</h3><p>Fund scholarships through <a href="{{r}}programs/course-fund/">the Compassion Course Fund</a>.</p></div>
-          </div>
-        </div>
-        <div class="form-card reveal">
-          <h2>Volunteer with us</h2>
-          <p>We read every note and will reply as soon as we can.</p>
-          <form class="form" data-form="volunteer">
-            <div class="form-row">
-              <div class="field"><label for="v-name">Full name</label><input id="v-name" name="name" required maxlength="120" autocomplete="name"></div>
-              <div class="field"><label for="v-email">Email</label><input id="v-email" name="email" type="email" required maxlength="200" autocomplete="email"></div>
-            </div>
-            <div class="field"><label for="v-phone">Phone <small>(optional)</small></label><input id="v-phone" name="phone" type="tel" maxlength="40" autocomplete="tel"></div>
-            <fieldset class="field">
-              <legend>I’d like to help with <small>(choose any)</small></legend>
-              <div class="chips">
-                <label><input type="checkbox" name="interest" value="translation"><span>Translation</span></label>
-                <label><input type="checkbox" name="interest" value="archive"><span>Archive &amp; media</span></label>
-                <label><input type="checkbox" name="interest" value="community"><span>Community outreach</span></label>
-                <label><input type="checkbox" name="interest" value="events"><span>Events</span></label>
-                <label><input type="checkbox" name="interest" value="other"><span>Something else</span></label>
-              </div>
-            </fieldset>
-            <div class="field"><label for="v-msg">Message</label><textarea id="v-msg" name="message" maxlength="4000" placeholder="A little about you, and how you’d like to help"></textarea></div>
-            <button class="btn btn-sun" type="submit">Send</button>
-            <p class="form-msg" data-form-msg role="status"></p>
-          </form>
-        </div>
-      </div>
-    </section>'''
-
 # ---------- contact ----------
 
 contact_hero = phero('{r}', 'Contact', [], 'Contact', 'We’d love to <em>hear</em> from you',
@@ -665,17 +774,15 @@ contact_hero = phero('{r}', 'Contact', [], 'Contact', 'We’d love to <em>hear</
 contact_body = f'''<section class="pbody">
       <div class="wrap split">
         <div class="contact-aside">
+          <div class="side-list addr reveal">
+            <h4>Mailing address</h4>
+            <address>Compassion Course Foundation Inc<br>PO Box 1031<br>Livingston Manor NY 12758</address>
+          </div>
           <div class="give-card reveal">
             <span class="way-n">Support the work</span>
             <h3>Help peace education reach everyone</h3>
-            <p>Your gift funds scholarships and community programs around the world.</p>
-            <a class="btn btn-sun" href="{{r}}donate/" data-donate>Donate</a>
-          </div>
-          <div class="side-list reveal">
-            <h4>Other ways to connect</h4>
-            <a href="{{r}}volunteer/"><b>Volunteer</b><small>Lend your time and talents</small></a>
-            <a href="#newsletter"><b>Newsletter</b><small>Occasional, hopeful news</small></a>
-            <a href="{{r}}events/"><b>Events</b><small>Gatherings and online sessions</small></a>
+            <p>Your gift funds scholarships and peace education programs around the world.</p>
+            <a class="btn btn-sun" href="{{r}}donate/" data-donate>Donate here</a>
           </div>
           <div class="side-list reveal">
             {social('{s}', 'social light')}
@@ -702,19 +809,16 @@ contact_body = f'''<section class="pbody">
 # ---------- donate (also where Stripe returns donors: /donate?success=true or ?canceled=true) ----------
 
 donate_hero = phero('{r}', 'Donate', [], 'Donate', 'Give to the <em>work</em>',
-    lede='Your gift funds scholarships and community programs, so more people can learn compassion.')
+    lede='Your gift funds scholarships and peace education programs throughout the world.')
 
 donate_body = f"""<section class="pbody">
       <div class="wrap split">
         <div class="split-head">
           <p class="kicker reveal">What giving supports</p>
           <h2 class="big reveal">Peace education for everyone, <em>everywhere</em>.</h2>
-          <p class="reveal">To ensure that peace education is available to all, the Compassion Course Fund provides scholarships and logistical support to individuals and groups who would otherwise face financial or geographic barriers.</p>
+          <p class="reveal">To ensure that peace education is available to all, the Fund provides scholarships and logistical support to individuals and groups who would otherwise face financial or geographic barriers</p>
           <div class="side-list reveal">
-            <h4>Our programs</h4>
-            <a href="{{r}}programs/course-fund/"><b>Removing Barriers</b><small>The Compassion Course Fund</small></a>
-            <a href="{{r}}programs/compassion-course/"><b>The Compassion Course</b><small>A Global Pathway to Peace</small></a>
-            <a href="{{r}}programs/archive/"><b>The Archive Program</b><small>A library for the world</small></a>
+            <h4>Our programs</h4>{''.join(f'{chr(10)}            <a href="{{r}}programs/{slug}/"><b>{t}</b><small>{sub}</small></a>' for slug, t, sub in PROGRAMS)}
           </div>
         </div>
         <div class="form-card give-panel reveal">
@@ -743,17 +847,21 @@ HEAD_404 = r"""
       var root = /\.github\.io$/.test(location.hostname) ? '/' + location.pathname.split('/')[1] + '/' : '/';
       if (root !== '/') document.querySelector('base').href = root;
 
-      var path = '/' + location.pathname.slice(root.length).replace(/\/+$/, ''), m, to;
-      // Program pages on the previous compassioncf.com were named by database id.
-      var programs = { ZyIg3cMJCw15DfgstFoW: 'compassion-course', bDzzWW2ECxSOVlSHFSa7: 'course-fund', skFlbSRJEvjbV0rnLPDF: 'archive' };
+      var path = '/' + location.pathname.slice(root.length).replace(/\/+$/, ''), hash = location.hash, m, to;
+      // Program pages on the previous compassioncf.com were named by database id. Two pages of this site
+      // were renamed in November 2026, when the foundation gave their programs new names.
+      var programs = { ZyIg3cMJCw15DfgstFoW: 'research-initiative', bDzzWW2ECxSOVlSHFSa7: 'scholarship-fund', skFlbSRJEvjbV0rnLPDF: 'archive',
+        'compassion-course': 'research-initiative', 'course-fund': 'scholarship-fund' };
       if ((m = path.match(/^\/programs\/([^\/]+)$/))) to = 'programs/' + (programs[m[1]] ? programs[m[1]] + '/' : '');
       else if ((m = path.match(/^\/blog\/([A-Za-z0-9_-]+)$/))) to = 'blog/post.html?id=' + encodeURIComponent(m[1]);
+      else if (path === '/events') { to = 'news/'; hash = hash || '#events'; }   // Events and Blog became one page, News and Updates
+      else if (path === '/volunteer') to = 'contact/';   // the volunteer page was taken down
       else if ((m = path.match(/^\/v1(\/.*)?$/))) to = (m[1] || '/').slice(1);   // this site, while it was one of five designs under review
       else if (/^\/admin\/.+/.test(path)) to = 'admin/';   // inner addresses of the previous admin panel
       else if (/^\/(home|v[2-5](\/.*)?)$/.test(path)) to = '';
       if (to != null) {
         document.documentElement.style.visibility = 'hidden';
-        location.replace(root + to + (to.indexOf('?') < 0 ? location.search : '') + location.hash);
+        location.replace(root + to + (to.indexOf('?') < 0 ? location.search : '') + hash);
       }
     })();
   </script>"""
@@ -774,14 +882,14 @@ notfound_body = f"""<section class="pbody">
           <div class="cta">
             <a class="btn btn-ink" href="{{r}}">Home</a>
             <a class="btn btn-line" href="{{r}}programs/">Programs</a>
-            <a class="btn btn-line" href="{{r}}blog/">Blog</a>
+            <a class="btn btn-line" href="{{r}}news/">News and Updates</a>
             <a class="btn btn-line" href="{{r}}contact/">Contact us</a>
           </div>
         </div>
       </div>
     </section>"""
 
-# ---------- the editor: sign-in, essays, events, inbox. Everything in it is drawn by shared/admin/app.js ----------
+# ---------- the editor: sign-in, essays, events, inbox, mailing list. Everything in it is drawn by shared/admin/app.js ----------
 
 # This page is a tool, so it has no hero: the "no-hero" body class makes the header solid and starts
 # the editor right under it. The heading is there for screen readers only.
@@ -801,32 +909,73 @@ NOINDEX = '\n  <meta name="robots" content="noindex">'
 CMS_JS = '\n  <script type="module" src="{s}cms.js"></script>'
 
 PAGES = [
-    ('about/index.html', 'About us', 'Why peace education matters, and who we are: the Compassion Course Foundation, a 501(c)(3) nonprofit.', 'about', about_hero, about_body, ''),
-    ('programs/index.html', 'Programs', 'The Compassion Course, the Compassion Course Fund and the Archive Program.', 'programs', programs_hero, programs_body, ''),
-    ('programs/compassion-course/index.html', 'The Compassion Course', 'The Compassion Course: a global pathway to peace, changing lives for 15 years in over 120 countries and 20 languages.', 'programs', course_hero, course_body, course_js),
-    ('programs/course-fund/index.html', 'Removing Barriers: The Compassion Course Fund', 'Scholarships and logistical support so peace education is available to all.', 'programs', fund_hero, fund_body, ''),
-    ('programs/archive/index.html', 'The Archive Program', 'Preserving almost 25 years of Compassion Course teaching as an online library of audio courses in 249 languages.', 'programs', archive_hero, archive_body, ''),
-    ('events/index.html', 'Events', 'Workshops, gatherings and online sessions from the Compassion Course community.', 'events', events_hero, events_body, CMS_JS),
+    ('about/index.html', 'About us', 'Why peace education matters, our history, and who we are: the Compassion Course Foundation, a 501(c)(3) nonprofit.', 'about', about_hero, about_body, ''),
+    ('programs/index.html', 'Programs', 'The Peace Engineering Scholarship Fund, the Global Peace Education Research Initiative, the Archive Program and the Global Needs Observatory.', 'programs', programs_hero, programs_body, ''),
+    ('programs/scholarship-fund/index.html', 'The Peace Engineering Scholarship Fund', 'The Peace Engineering Scholarship Fund: scholarships and logistical support, so that peace education is never limited by privilege or circumstance.', 'programs', fund_hero, fund_body, GLOBE_JS),
+    ('programs/research-initiative/index.html', 'The Global Peace Education Research Initiative', 'The Global Peace Education Research Initiative: evaluating the impact of peace education training with robust science.', 'programs', research_hero, research_body, GLOBE_JS),
+    ('programs/archive/index.html', 'The Archive Program', 'The Archive Program: a multilingual, global digital library preserving 25 years of peace education history.', 'programs', archive_hero, archive_body, ''),
+    ('programs/global-needs-observatory/index.html', 'The Global Needs Observatory', 'The Global Needs Observatory: a needs-based framework and infrastructure for peace engineering. This program is forming.', 'programs', obs_hero, obs_body, ''),
+    ('news/index.html', 'News and Updates', 'Essays, recommended podcast episodes, the Feelings and Needs List, upcoming dates and the mailing list of the Compassion Course Foundation.', 'news', news_hero, news_body, CMS_JS),
     ('board/index.html', 'Board members', 'Meet the board guiding the Compassion Course Foundation.', 'about', board_hero, board_body, ''),
-    ('blog/index.html', 'Blog', 'Essays and reflections from Thom Bond and the Compassion Course community.', 'blog', blog_hero, blog_body, CMS_JS),
-    ('blog/post.html', 'Essay', 'An essay from the Compassion Course Foundation blog.', 'blog', post_hero, post_body, CMS_JS),
-    ('volunteer/index.html', 'Volunteer', 'Join the Compassion Course Foundation’s mission as a volunteer.', 'volunteer', vol_hero, vol_body, ''),
+    ('blog/index.html', 'Essays', 'Essays and reflections from Thom Bond and the Compassion Course community.', 'news', blog_hero, blog_body, CMS_JS),
+    ('blog/post.html', 'Essay', 'An essay from the Compassion Course Foundation.', 'news', post_hero, post_body, CMS_JS),
     ('contact/index.html', 'Contact us', 'Get in touch with the Compassion Course Foundation.', 'contact', contact_hero, contact_body, ''),
     ('donate/index.html', 'Donate', 'Give to the Compassion Course Foundation: secure online donations through Stripe.', None, donate_hero, donate_body, ''),
 ]
 
-for i, (path, title, desc, active, hero, body, js) in enumerate(PAGES, start=2):
-    page(path, title, desc, active, hero, body, i, js)
+for path, title, desc, active, hero, body, js in PAGES:
+    page(path, title, desc, active, hero, body, js)
 
-page('admin/index.html', 'Site editor', 'Sign in to edit the Compassion Course Foundation website.', None, '', admin_body, 0, ADMIN_JS, head=NOINDEX, news=False, body_class='no-hero')
-page('404.html', 'Page not found', 'This page could not be found.', None, notfound_hero, notfound_body, 0, SKIP_404, head=HEAD_404, news=False)
+page('admin/index.html', 'Site editor', 'Sign in to edit the Compassion Course Foundation website.', None, '', admin_body, ADMIN_JS, head=NOINDEX, body_class='no-hero')
+page('404.html', 'Page not found', 'This page could not be found.', None, notfound_hero, notfound_body, SKIP_404, head=HEAD_404)
 
-# ---------- home page: written by hand, only its header and footer come from here ----------
+# Pages this script used to build. Their files are removed so an old copy can't stay published;
+# 404.html forwards their addresses (events/ to News and Updates, volunteer/ to the contact page,
+# and the two program pages to the addresses they have now).
+for old in ('events/index.html', 'volunteer/index.html', 'programs/course-fund/index.html', 'programs/compassion-course/index.html'):
+    stale = os.path.join(SITE, old)
+    if os.path.exists(stale):
+        os.remove(stale)
+        try:
+            os.rmdir(os.path.dirname(stale))
+        except OSError:
+            pass
+        print('removed', stale)
+
+# ---------- home page: written by hand; its header, footer and program cards come from here ----------
+
+# What each program's card on the home page shows: its picture, one line, the link's words, and a status if it has one.
+HOME_CARDS = {
+    'scholarship-fund': ('<img src="shared/img/hands.jpg" alt="Many hands stacked together in a circle" loading="lazy">', 'Scholarships and logistical support, so that peace education is never limited by privilege or circumstance', 'See the Fund', ''),
+    'research-initiative': ('<img src="shared/img/online.jpg" alt="An online class with many participants on a laptop screen" loading="lazy">', 'Evaluating the impact of peace education training with robust science', 'See how the initiative works', ''),
+    'archive': (WAVE, '25 years of compassion-centered teaching, digitized, translated, and indexed into a global online library in over 240 languages', 'Inside the archive', ''),
+    'global-needs-observatory': (STARMAP, 'A needs-based framework and infrastructure for peace engineering.', 'Inside the Observatory', 'Forming'),
+}
+
+def home_cards():
+    cards = []
+    for slug, title, sub in PROGRAMS:
+        media, text, label, status = HOME_CARDS[slug]
+        tag = f' <span class="status">{status}</span>' if status else ''
+        cards.append(f'''<article class="card reveal">
+            <div class="card-img">{media}</div>
+            <div class="card-body">
+              <p class="card-n">{number(slug)} — Program{tag}</p>
+              <h3>{title}</h3>
+              <p>{text}</p>
+              <a href="programs/{slug}/" class="more">{label} <span aria-hidden="true">→</span></a>
+            </div>
+          </article>''')
+    return '<div class="cards">\n          ' + '\n          '.join(cards) + '\n        </div>'
+
 home = os.path.join(SITE, 'index.html')
 with open(home, encoding='utf-8') as f:
     h = f.read()
 h = re.sub(r'<header class="hdr".*?</header>', lambda m: header('', None, home=True), h, count=1, flags=re.S)
 h = re.sub(r'<footer class="ftr">.*?</footer>', lambda m: footer('', home=True), h, count=1, flags=re.S)
+h, cards_found = re.subn(r'(<!-- program cards:[^>]*-->).*?(<!-- /program cards -->)', lambda m: f'{m.group(1)}\n        {home_cards()}\n        {m.group(2)}', h, count=1, flags=re.S)
+if not cards_found:
+    sys.exit('index.html: the "program cards" markers are missing, so the cards were not written')
 with open(home, 'w', encoding='utf-8', newline='\n') as f:
     f.write(h)
 print('synced', home)

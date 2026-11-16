@@ -102,7 +102,7 @@ function build() {
       <div class="dn-form">
         <p class="dn-k">Donate</p>
         <h2 class="dn-title" id="dn-title">Make a gift</h2>
-        <p class="dn-sub">Your gift funds scholarships and community programs, so more people can learn compassion.</p>
+        <p class="dn-sub">Your gift funds scholarships and peace education programs throughout the world.</p>
         <div class="dn-head">
           <span class="dn-label" id="dn-amt-label">Choose an amount</span>
           <span class="dn-cur"><select aria-label="Currency">${CURRENCIES.map((c) => `<option value="${c.code}">${c.code} ${c.symbol}</option>`).join('')}</select></span>

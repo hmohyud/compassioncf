@@ -108,9 +108,10 @@ function forgetPicked() {
 function pageLinks() {
   const post = new URLSearchParams(location.search).get('id');
   if (document.querySelector('[data-cms="blog-post"]') && post) return `<a href="${ADMIN}#essays/${encodeURIComponent(post)}">Edit this essay</a>`;
-  if (document.querySelector('[data-cms="events"]')) return `<a href="${ADMIN}#events/new">Add an event</a>`;
-  if (document.querySelector('[data-cms="blog-list"][data-href^="post.html"]')) return `<a href="${ADMIN}#essays/new">New essay</a>`;
-  return '';
+  // The pages that list essays or events: the Essays page, and News and Updates, which lists both.
+  const events = document.querySelector('[data-cms="events"]');
+  const essays = document.querySelector('[data-cms="blog-list"][data-href^="post.html"]') || (events && document.querySelector('[data-cms="blog-list"]'));
+  return (essays ? `<a href="${ADMIN}#essays/new">New essay</a>` : '') + (events ? `<a href="${ADMIN}#events/new">Add an event</a>` : '');
 }
 
 function render() {

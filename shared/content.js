@@ -5,6 +5,7 @@
 // visitor. A key is a hash of the sentence as it is written in the page's own HTML, so:
 //   - an edit follows that sentence wherever it appears (the footer line is edited once for all pages);
 //   - if the sentence itself is later changed in the code, the edit no longer matches and is dropped.
+// Keys also carry a generation number (see keyFor): edits from an earlier generation are ignored.
 //
 // Only simple inline markup survives (emphasis, links, line breaks). Everything else is stripped, when an
 // edit is saved and again here before it is shown, so the stored text can never inject anything else.
@@ -34,7 +35,7 @@ const SKIP = [
   'script', 'style', 'noscript', 'svg', 'nav', 'form', 'dialog', '.brand', '.skip', '.cms-note',
   '.g-wrap', '[role="status"]', '[role="alert"]', '[aria-live]',
   '[aria-hidden="true"]', '[data-count]', '[data-year]', '[data-no-edit]', '[data-admin-app]',
-  '[data-posts]', '[data-events-list]', '[data-events-loading]', '[data-events-note]',
+  '[data-posts]', '[data-events-note]',   // an event from the database carries data-no-edit; the dates written into a page can be edited
   '[data-post-title]', '[data-post-sub]', '[data-post-by]', '[data-post-body]',
 ].join(',');
 const NOT_PLAIN_TEXT = 'img,svg,input,select,textarea,button,iframe,canvas,video,form,[data-count],[data-year]';
@@ -63,7 +64,13 @@ function fnv(str, seed) {
   for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
   return h.toString(16).padStart(8, '0');
 }
-export const keyFor = (html) => fnv(html, 2166136261) + fnv(html, 0x9e3779b9);
+// A saved change is kept under "<generation>:<hash of the sentence>". When wording saved in the editor is
+// written into the pages themselves, as it was on 16 November 2026, raise the generation: the changes
+// saved before then are part of the pages now, so they are no longer laid over them (and a line that was
+// blanked then cannot blank a new line that happens to read the same). They stay in the database, unused.
+const TEXT_GENERATION = '2';
+export const keyFor = (html) => `${TEXT_GENERATION}:${fnv(html, 2166136261)}${fnv(html, 0x9e3779b9)}`;
+export const isCurrent = (key) => String(key).startsWith(`${TEXT_GENERATION}:`);
 
 /* ---------- keeping stored text harmless ---------- */
 
@@ -138,7 +145,7 @@ export function apply(edits = {}) {
 /* ---------- photos ---------- */
 
 // Photographs in the page body. Logos, and anything a script draws, are left alone.
-const IMAGE_SKIP = 'nav, form, dialog, .brand, .news-in, .g-wrap, [data-admin-app], [data-no-edit], [data-posts], [data-post-body], [data-events-list]';
+const IMAGE_SKIP = 'nav, form, dialog, .brand, .g-wrap, [data-admin-app], [data-no-edit], [data-posts], [data-post-body], [data-events-list]';
 
 // Which photo this is: its path inside this site ("shared/img/hands.jpg"), or the full address of a file kept elsewhere.
 export function imageKey(src) {

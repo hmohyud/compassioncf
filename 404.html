@@ -16,17 +16,21 @@
       var root = /\.github\.io$/.test(location.hostname) ? '/' + location.pathname.split('/')[1] + '/' : '/';
       if (root !== '/') document.querySelector('base').href = root;
 
-      var path = '/' + location.pathname.slice(root.length).replace(/\/+$/, ''), m, to;
-      // Program pages on the previous compassioncf.com were named by database id.
-      var programs = { ZyIg3cMJCw15DfgstFoW: 'compassion-course', bDzzWW2ECxSOVlSHFSa7: 'course-fund', skFlbSRJEvjbV0rnLPDF: 'archive' };
+      var path = '/' + location.pathname.slice(root.length).replace(/\/+$/, ''), hash = location.hash, m, to;
+      // Program pages on the previous compassioncf.com were named by database id. Two pages of this site
+      // were renamed in November 2026, when the foundation gave their programs new names.
+      var programs = { ZyIg3cMJCw15DfgstFoW: 'research-initiative', bDzzWW2ECxSOVlSHFSa7: 'scholarship-fund', skFlbSRJEvjbV0rnLPDF: 'archive',
+        'compassion-course': 'research-initiative', 'course-fund': 'scholarship-fund' };
       if ((m = path.match(/^\/programs\/([^\/]+)$/))) to = 'programs/' + (programs[m[1]] ? programs[m[1]] + '/' : '');
       else if ((m = path.match(/^\/blog\/([A-Za-z0-9_-]+)$/))) to = 'blog/post.html?id=' + encodeURIComponent(m[1]);
+      else if (path === '/events') { to = 'news/'; hash = hash || '#events'; }   // Events and Blog became one page, News and Updates
+      else if (path === '/volunteer') to = 'contact/';   // the volunteer page was taken down
       else if ((m = path.match(/^\/v1(\/.*)?$/))) to = (m[1] || '/').slice(1);   // this site, while it was one of five designs under review
       else if (/^\/admin\/.+/.test(path)) to = 'admin/';   // inner addresses of the previous admin panel
       else if (/^\/(home|v[2-5](\/.*)?)$/.test(path)) to = '';
       if (to != null) {
         document.documentElement.style.visibility = 'hidden';
-        location.replace(root + to + (to.indexOf('?') < 0 ? location.search : '') + location.hash);
+        location.replace(root + to + (to.indexOf('?') < 0 ? location.search : '') + hash);
       }
     })();
   </script>
@@ -49,9 +53,7 @@
       <nav id="nav" class="nav" aria-label="Primary">
         <a href="about/">About</a>
         <a href="programs/">Programs</a>
-        <a href="events/">Events</a>
-        <a href="blog/">Blog</a>
-        <a href="volunteer/">Get involved</a>
+        <a href="news/">News and Updates</a>
         <a href="contact/">Contact</a>
         <a class="btn btn-sun sm" href="donate/" data-donate>Donate</a>
       </nav>
@@ -80,14 +82,12 @@
           <div class="cta">
             <a class="btn btn-ink" href="">Home</a>
             <a class="btn btn-line" href="programs/">Programs</a>
-            <a class="btn btn-line" href="blog/">Blog</a>
+            <a class="btn btn-line" href="news/">News and Updates</a>
             <a class="btn btn-line" href="contact/">Contact us</a>
           </div>
         </div>
       </div>
     </section>
-
-    
   </main>
 
   <footer class="ftr">
@@ -110,16 +110,14 @@
         <h4>Quick links</h4>
         <a href="about/">About us</a>
         <a href="programs/">Programs</a>
-        <a href="events/">Events</a>
-        <a href="blog/">Blog</a>
+        <a href="news/">News and Updates</a>
         <a href="board/">Board members</a>
+        <a href="contact/">Contact us</a>
       </div>
       <div>
-        <h4>Get involved</h4>
+        <h4>Support</h4>
         <a href="donate/" data-donate>Donate</a>
-        <a href="volunteer/">Volunteer</a>
-        <a href="#newsletter">Newsletter</a>
-        <a href="contact/">Contact us</a>
+        <a href="news/#mailing-list">Join our mailing list</a>
       </div>
     </div>
     <div class="wrap ftr-base">© <span data-year>2026</span> Compassion Course Foundation, Inc. All rights reserved.</div>
