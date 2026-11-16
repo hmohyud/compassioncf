@@ -5,8 +5,9 @@
 // Sections follow the address: #essays, #essays/new, #essays/<id>, #events…, #inbox, #newsletter, #text.
 
 import * as session from './session.js';
-import { markdown, splitTitle, toDate } from '../cms.js';
-import { fetchChanges, fetchEdits, setEdits, setImages, isStored, isCurrent, sanitize, TEXT_DOC, TEXT_FIELD, IMAGE_FIELD } from '../content.js';
+import { markdown, splitTitle, toDate, lastDay } from '../cms.js';
+import { fetchChanges, fetchEdits, setEdits, setImages, setDatesOff, isStored, isCurrent, sanitize, TEXT_DOC, TEXT_FIELD, IMAGE_FIELD, DATES_FIELD } from '../content.js';
+import { EARLIER, ORIGINALS } from './originals.js';
 
 const root = document.querySelector('[data-admin-app]');
 const SITE = new URL('../../', import.meta.url).href;
@@ -252,27 +253,82 @@ function format(kind) {
 /* ---------- events ---------- */
 
 const eventDate = (e) => toDate(e.date);
+const monthName = (d) => d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+
+// The dates written into the News and Updates page itself (FIXED_EVENTS in tools/build_pages.py), read from the
+// page as it is published, so nothing here has to be kept in step with it by hand.
+async function datesInThePage() {
+  try {
+    const res = await fetch(`${SITE}news/`, { cache: 'no-store' });
+    if (!res.ok) return [];
+    const page = new DOMParser().parseFromString(await res.text(), 'text/html');
+    return [...page.querySelectorAll('[data-events-list] [data-fixed]')].map((item) => ({
+      name: item.dataset.fixed,
+      title: (item.querySelector('h3')?.textContent || '').trim(),
+      day: item.dataset.date,
+      until: item.dataset.until || item.dataset.date,
+      month: !!item.querySelector('.event-date.month'),
+      shown: (item.querySelector('time')?.textContent || '').trim(),
+    })).filter((d) => d.name && d.title && isDayOnly(d.day) && isDayOnly(d.until));
+  } catch {
+    return [];
+  }
+}
+// Those of them that are still the page's own: not moved into the list of events yet, and not past.
+async function datesStillInThePage() {
+  const [{ datesOff }, dates] = await Promise.all([fetchChanges(), datesInThePage()]);
+  return { datesOff, dates: dates.filter((d) => !datesOff.includes(d.name) && fromDay(d.until, '23:59') >= startOfToday()) };
+}
 
 async function events(id) {
   if (id) return eventForm(id);
   loading('Loading events…');
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const all = (await session.list('events')).map((e) => ({ ...e, when: eventDate(e) }));
-  const upcoming = all.filter((e) => e.when && e.when >= today).sort((a, b) => a.when - b.when);
-  const past = all.filter((e) => !e.when || e.when < today).sort((a, b) => (b.when || 0) - (a.when || 0));
+  const today = startOfToday();
+  const [found, inPage] = await Promise.all([session.list('events'), datesStillInThePage().then((r) => r.dates).catch(() => [])]);
+  const all = found.map((e) => ({ ...e, when: eventDate(e) })).map((e) => ({ ...e, ends: lastDay(e, e.when) }));
+  const upcoming = all.filter((e) => e.when && e.ends >= today).sort((a, b) => a.ends - b.ends);
+  const past = all.filter((e) => !e.when || e.ends < today).sort((a, b) => (b.ends || 0) - (a.ends || 0));
+  const shown = (e) => (!e.when ? 'No date' : e.wholeMonth === true ? monthName(e.when) : isDayOnly(e.date) || !(e.when.getHours() || e.when.getMinutes()) ? longDate(e.when) : dateTime(e.when));
   const row = (e) => `<li><a class="adm-row" href="#events/${encodeURIComponent(e.id)}">
     <span><span class="adm-title">${esc(e.title || 'Untitled event')}</span><span class="adm-sub">${esc(e.location || '')}</span></span>
-    <span class="adm-meta">${esc(e.when ? (isDayOnly(e.date) || !(e.when.getHours() || e.when.getMinutes()) ? longDate(e.when) : dateTime(e.when)) : 'No date')}</span></a></li>`;
+    <span class="adm-meta">${esc(shown(e))}</span></a></li>`;
+  const one = inPage.length === 1;
   view().innerHTML = `
     ${takeFlash()}
     <div class="adm-head">
       <div><h2>Events</h2><p>Upcoming events appear under “Events” on the News and Updates page, in date order. Past ones drop off it by themselves.</p></div>
       <a class="btn btn-sun sm" href="#events/new">Add an event</a>
     </div>
+    ${inPage.length ? `<h3 class="adm-group">Written into the page</h3>
+    <p class="adm-hint">${one ? 'This date is' : `These ${inPage.length} dates are`} part of the News and Updates page itself, so ${one ? 'it' : 'they'} can’t be changed or removed from here yet. Move ${one ? 'it' : 'them'} into this list and ${one ? 'it becomes an ordinary event' : 'they become ordinary events'}: the page looks the same, and ${one ? 'it' : 'each'} can then be changed or removed like any other.</p>
+    <ul class="adm-list">${inPage.map((d) => `<li class="adm-mail"><span><span class="adm-title">${esc(d.title)}</span><span class="adm-sub">${esc(d.shown)}</span></span></li>`).join('')}</ul>
+    <div class="adm-actions"><button type="button" class="btn btn-ink sm" data-act="take-dates">Move ${one ? 'it' : 'them'} into this list</button><span class="adm-note" data-note role="status"></span></div>` : ''}
     <h3 class="adm-group">Upcoming</h3>
-    ${upcoming.length ? `<ul class="adm-list">${upcoming.map(row).join('')}</ul>` : '<p class="adm-empty">Nothing added here is coming up. The page shows the dates that are written into it, or its “Nothing on the calendar just yet” card once those have passed.</p>'}
+    ${upcoming.length ? `<ul class="adm-list">${upcoming.map(row).join('')}</ul>` : `<p class="adm-empty">${inPage.length ? 'Nothing added here is coming up.' : 'Nothing is coming up. The page shows its “Nothing on the calendar just yet” card.'}</p>`}
     ${past.length ? `<h3 class="adm-group">Past</h3><ul class="adm-list">${past.map(row).join('')}</ul>` : ''}`;
+}
+
+// Turns the dates written into the page into events in the database, then records that they have moved, which
+// takes the page's own copies away (shared/cms.js). The events are made first: if the second step failed, the
+// worst that could happen is a date showing twice, never a date lost, and the page already drops its own copy
+// of a date when an event has the same name. A date that is here already under the same name is not made again.
+async function takeDates() {
+  const [{ datesOff, dates: moving }, existing] = await Promise.all([datesStillInThePage(), session.list('events')]);
+  const have = new Set(existing.map((e) => String(e.title || '').trim().toLowerCase()));
+  for (const d of moving) {
+    if (have.has(d.title.toLowerCase())) continue;
+    const now = new Date();
+    await session.create('events', {
+      title: d.title, location: '', description: `[Donate](${SITE}donate/)`,
+      date: d.month ? `${d.day.slice(0, 7)}-01` : d.day, wholeMonth: d.month, createdAt: now, updatedAt: now,
+    });
+  }
+  const next = [...new Set([...datesOff, ...moving.map((d) => d.name)])];
+  await session.setField(TEXT_DOC, DATES_FIELD, JSON.stringify(next));
+  setDatesOff(next);
+  flash = moving.length === 1 ? 'That date is an ordinary event now. Change or remove it like any other.' : 'Those dates are ordinary events now. Change or remove them like any other.';
+  go('#events');
 }
 
 async function eventForm(id) {
@@ -280,7 +336,8 @@ async function eventForm(id) {
   let ev = { title: '', description: '', location: '', date: '' };
   if (!isNew) { loading('Opening the event…'); ev = await session.get('events', id); }
   const when = eventDate(ev);
-  const timed = when && !isDayOnly(ev.date) && (when.getHours() || when.getMinutes());
+  const month = ev.wholeMonth === true;
+  const timed = when && !month && !isDayOnly(ev.date) && (when.getHours() || when.getMinutes());
   view().innerHTML = `
     <a class="adm-back" href="#events">← All events</a>
     ${takeFlash()}
@@ -291,6 +348,7 @@ async function eventForm(id) {
         <div class="field"><label for="v-day">Date</label><input id="v-day" name="day" type="date" required value="${when ? isoDay(when) : ''}"></div>
         <div class="field"><label for="v-time">Start time <small>(optional; shown in each visitor’s own time zone)</small></label><input id="v-time" name="time" type="time" value="${timed ? clock(when) : ''}"></div>
       </div>
+      <label class="adm-check"><input type="checkbox" name="month" ${month ? 'checked' : ''}> No particular day <small>(the page shows the month only, and keeps the event until that month ends)</small></label>
       <div class="field"><label for="v-place">Place <small>(for example “Online” or a city)</small></label><input id="v-place" name="location" maxlength="200" value="${esc(ev.location || '')}"></div>
       <div class="field"><label for="v-desc">Details</label><textarea id="v-desc" name="description" maxlength="4000">${esc(ev.description || '')}</textarea></div>
       <div class="adm-actions">
@@ -305,12 +363,15 @@ async function eventForm(id) {
 async function saveEvent(form) {
   const f = form.elements;
   const id = form.dataset.id;
+  const month = f.month.checked;
   const data = {
     title: f.title.value.trim(),
     description: f.description.value.replace(/\r\n?/g, '\n').trim(),
     location: f.location.value.trim(),
     // A day on its own is kept as plain text so it is the same day everywhere; with a time it is an exact moment.
-    date: f.time.value ? fromDay(f.day.value, f.time.value) : f.day.value,
+    // An event for a whole month keeps the first day of that month, and says so in wholeMonth.
+    date: month ? `${f.day.value.slice(0, 7)}-01` : f.time.value ? fromDay(f.day.value, f.time.value) : f.day.value,
+    wholeMonth: month,
     updatedAt: new Date(),
   };
   if (id === 'new') {
@@ -401,20 +462,47 @@ function downloadAddresses() {
 // Where a photo's original file is: inside this site, or at the outside address the page uses.
 const originalPhoto = (key) => (/^https?:/i.test(key) ? key : SITE + key);
 
+// Why a line that was reworded before 16 November 2026 has no button to put its first wording back.
+const NO_BUTTON = {
+  'by-place': 'These words now stand in several places that started from different wording. To change one, retype it on its page.',
+  stale: 'Going back would no longer be true.',
+  removed: 'Emptied in the editor, then taken out of the page. Putting it back is a change to the site’s code.',
+  gone: 'The page it was on no longer exists.',
+};
+
 async function text() {
   loading('Loading the changes…');
   const { edits, images } = await fetchChanges();
   const keys = Object.keys(edits).filter(isCurrent);   // wording saved before it was written into the pages themselves is not listed: it is part of the pages now
   const photos = Object.keys(images).filter((k) => isStored(images[k]));
+  const words = (html) => plainText(html).slice(0, 260) || '(empty)';
+  // A saved change on a line that has an earlier wording either is that earlier wording (the line was put back) or is something newer still.
+  const putBack = (k) => typeof ORIGINALS[k] === 'string' && plainText(edits[k]) === plainText(ORIGINALS[k]);
+  const changed = (k) => `
+      <li class="adm-mail"><span class="adm-sub" style="margin:0;font-size:15.5px;color:var(--text)">${esc(words(edits[k]))}${putBack(k) ? '<span class="adm-badge quiet">Original wording</span>' : ''}</span>
+        ${putBack(k) ? `<button type="button" class="adm-danger sm" data-undo="${esc(k)}">Use the newer wording</button>`
+    : `<button type="button" class="adm-danger sm" ${typeof ORIGINALS[k] === 'string' ? 'data-orig' : 'data-undo'}="${esc(k)}">Use the original wording</button>`}</li>`;
+  // Lines reworded before 16 November 2026: the page itself carries the newer wording, and the first wording is kept in originals.js.
+  const canGoBack = EARLIER.filter((line) => line.kind === 'kept' && !(line.key in edits));
+  const reference = EARLIER.filter((line) => line.kind !== 'kept');
+  const earlier = (line, button) => `
+      <li class="adm-was"><span><span class="adm-now">${esc(words(line.now))}</span>
+        <span class="adm-sub"><b>At first:</b> ${esc(words(line.was))}</span>
+        <span class="adm-meta">${esc(line.where)}${button ? '' : ` · ${esc(NO_BUTTON[line.kind] || '')}`}</span></span>
+        ${button ? `<button type="button" class="adm-danger sm" data-orig="${esc(line.key)}">Use the original wording</button>` : ''}</li>`;
   view().innerHTML = `
     ${takeFlash()}
     <div class="adm-head"><div><h2>Text and photos</h2>
       <p>To change wording or a photo, open any page of the site and press <b>Edit this page</b> in the bar at the bottom. Click the text and type, or click a photo to choose another, then press Save.</p></div>
       <a class="btn btn-sun sm" href="${SITE}">Go to the site</a></div>
     <h3 class="adm-group">Wording changed</h3>
-    ${keys.length ? `<ul class="adm-list">${keys.map((k) => `
-      <li class="adm-mail"><span class="adm-sub" style="margin:0;font-size:15.5px;color:var(--text)">${esc(plainText(edits[k]).slice(0, 220) || '(empty)')}</span>
-        <button type="button" class="adm-danger sm" data-undo="${esc(k)}">Use the original wording</button></li>`).join('')}</ul>` : '<p class="adm-empty">None. Every page shows the wording it was built with.</p>'}
+    ${keys.length ? `<ul class="adm-list">${keys.map(changed).join('')}</ul>` : '<p class="adm-empty">None since 16 November 2026. Every page shows its own wording.</p>'}
+    <h3 class="adm-group">Reworded before 16 November 2026</h3>
+    <p class="adm-hint">These lines were reworded in the editor, and the newer wording is now part of the pages. Each can go back to what it said at first, which is the previous website’s wording wherever the line came from there. A line changes everywhere it appears.</p>
+    ${canGoBack.length ? `<ul class="adm-list">${canGoBack.map((line) => earlier(line, true)).join('')}</ul>` : '<p class="adm-empty">None left: each of these lines has been changed again or put back.</p>'}
+    <details class="adm-more"><summary>${reference.length} more lines, kept for reference</summary>
+      <ul class="adm-list">${reference.map((line) => earlier(line, false)).join('')}</ul>
+    </details>
     <h3 class="adm-group">Photos changed</h3>
     ${photos.length ? `<ul class="adm-list">${photos.map((k) => `
       <li class="adm-mail"><span class="adm-swap"><img class="was" src="${esc(originalPhoto(k))}" alt="The original photo" loading="lazy"> replaced by
@@ -422,12 +510,24 @@ async function text() {
         <button type="button" class="adm-danger sm" data-undo-photo="${esc(k)}">Use the original photo</button></li>`).join('')}</ul>` : '<p class="adm-empty">None. Every page shows the photos it was built with.</p>'}`;
 }
 
+// Removes a saved change, so the line reads as the page itself is written.
 async function undoEdit(key) {
   const next = { ...(await fetchEdits()) };
   delete next[key];
   await session.setField(TEXT_DOC, TEXT_FIELD, JSON.stringify(next));
   setEdits(next);
-  flash = 'That text is back to its original wording.';
+  flash = typeof ORIGINALS[key] === 'string' ? 'That line shows its newer wording again.' : 'That text is back to its original wording.';
+  route();
+}
+
+// Puts back the wording a line had at first, for a line whose newer wording is part of the page: the first
+// wording is saved as a change, like any other, and shows everywhere the line appears.
+async function useOriginal(key) {
+  if (typeof ORIGINALS[key] !== 'string') return;
+  const next = { ...(await fetchEdits()), [key]: sanitize(ORIGINALS[key]) };
+  await session.setField(TEXT_DOC, TEXT_FIELD, JSON.stringify(next));
+  setEdits(next);
+  flash = 'That line is back to its original wording.';
   route();
 }
 
@@ -490,6 +590,7 @@ root.addEventListener('click', (e) => {
   if (act === 'retry') route();
   if (act === 'copy') copyAddresses();
   if (act === 'csv') downloadAddresses();
+  if (act === 'take-dates') attempt(e.target.closest('[data-act]'), takeDates);
 
   const md = e.target.closest('[data-md]');
   if (md) format(md.dataset.md);
@@ -502,6 +603,9 @@ root.addEventListener('click', (e) => {
 
   const undo = e.target.closest('[data-undo]');
   if (undo && confirmTwice(undo)) attempt(undo, () => undoEdit(undo.dataset.undo));
+
+  const orig = e.target.closest('[data-orig]');
+  if (orig && confirmTwice(orig)) attempt(orig, () => useOriginal(orig.dataset.orig));
 
   const back = e.target.closest('[data-undo-photo]');
   if (back && confirmTwice(back)) attempt(back, () => undoPhoto(back.dataset.undoPhoto));

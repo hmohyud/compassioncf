@@ -131,6 +131,16 @@ a.adm-row:hover .adm-title { color: #d0664c; }
 .adm-swap { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--muted); }
 .adm-swap img { width: 92px; height: 68px; object-fit: cover; border-radius: 10px; background: var(--cream); box-shadow: 0 0 0 1px rgba(20, 26, 68, .12); }
 .adm-swap img.was { opacity: .55; }
+/* lines reworded before 16 November 2026: what each says now, what it said at first, and where it is */
+.adm-hint { margin: 0 0 6px; max-width: 62em; font-size: 15px; color: var(--muted); }
+.adm-was { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 20px; align-items: center; padding: 14px 4px; }
+.adm-was > span { flex: 1 1 320px; min-width: 0; }
+.adm-now { display: block; font-size: 15.5px; color: var(--text); }
+.adm-was .adm-sub b { font-weight: 600; color: var(--ink); }
+.adm-was .adm-meta { display: block; margin-top: 4px; text-align: left; white-space: normal; }
+.adm-more { margin-top: 10px; }
+.adm-more summary { padding: 10px 4px; font: 600 14.5px var(--sans); color: var(--ink); cursor: pointer; }
+.adm-more summary:hover { color: var(--red); }
 
 @media (max-width: 760px) {
   .adm-split, .adm-edit .form-row { grid-template-columns: 1fr; }

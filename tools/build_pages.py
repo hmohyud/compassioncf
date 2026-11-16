@@ -16,9 +16,12 @@ import math, os, re, sys
 
 SITE = sys.argv[1] if len(sys.argv) > 1 else os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
-THOM_IMG = 'https://images.squarespace-cdn.com/content/v1/5dfa821b21876f38ff1126c5/1582068821253-37SLPK803AAVS3ZD061T/TMB-2018-small-4.jpg'
-DEBRA_IMG = 'https://njms.rutgers.edu/mbmapp/public_html/pictures/ChewDebra.jpg'
-HYDER_IMG = '{s}img/hyder-mohyuddin.jpg'   # a file of this site; "{s}" becomes the path to shared/ from each page
+# The board's portraits are files of this site ("{s}" becomes the path to shared/ from each page). Thom's and
+# Debra's were first loaded from other websites; they were copied here on 16 November 2026 so the pages no
+# longer depend on those sites. Every portrait is shown in black and white (see .portrait img in style.css).
+THOM_IMG = '{s}img/thom-bond.jpg'
+DEBRA_IMG = '{s}img/debra-chew.jpg'
+HYDER_IMG = '{s}img/hyder-mohyuddin.jpg'
 
 NAV = [('about', 'About'), ('programs', 'Programs'), ('news', 'News and Updates'), ('contact', 'Contact')]
 
@@ -410,7 +413,7 @@ obs_body = f'''<section class="pbody">
           {pager('global-needs-observatory')}
         </div>
         <aside class="aside" aria-label="Support and more programs">
-          {give_card('Support this program', 'Help peace education reach everyone', 'Your gift funds scholarships and peace education programs throughout the world', 'Donate here')}
+          {give_card('Support this program', 'Help peace education reach everyone', 'Your gift funds scholarships and peace education programs throughout the world.', 'Donate here')}
           {other_programs('global-needs-observatory')}
         </aside>
       </div>
@@ -603,7 +606,7 @@ board_body = f'''<section class="pbody">
             <p class="kicker">Chief Information Officer</p>
             <h2>Hyder Mohyuddin</h2>
             <p>Hyder Mohyuddin is a software engineer who built this website and maintains the Compassion Course’s online platform.</p>
-            <p>Hyder studied Computer Science, with a minor in Visual Arts, at the University of Chicago, and worked there on generative image research. A tutor since 2016, Hyder has also helped teach coding with Code Platoon and Code Your Dreams.</p>
+            <p>Hyder has a major in Computer Science and a minor in Visual Arts from the University of Chicago, and worked there on generative image research. A tutor since 2016, Hyder has also helped teach coding with Code Platoon and Code Your Dreams.</p>
           </div>
         </article>
       </div>
@@ -630,12 +633,15 @@ def episodes():
     return ''.join(f'''
               <li><a href="{url}" target="_blank" rel="noopener"><span class="ep-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M8.5 5.6v12.8l10.6-6.4z"/></svg></span><span class="ep-text"><b>{title}</b><small>{length}</small></span></a></li>''' for title, length, url in EPISODES)
 
-# Dates written into the page. Each has data-until, its last day: after that day shared/cms.js takes it
-# off the page, so nothing here goes stale. Events added in the editor join the same list, in date order
-# (data-date is where a date sorts).
-def fixed_event(day, month, year, title, when, datetime, sort, until):
+# Dates written into the page, for as long as they are not events in the database.
+#   data-fixed  the date's own name. Once an editor moves a date into the editor's Events list, that name is
+#               saved in the database (content.js, DATES_FIELD) and shared/cms.js stops showing this copy.
+#   data-until  its last day: after it, shared/cms.js takes the date off the page, so nothing here goes stale.
+#   data-date   where it sorts among the events from the database, which join the same list.
+# The editor's Events tab reads this list from the built page to offer "Move them into this list".
+def fixed_event(name, day, month, year, title, when, datetime, sort, until):
     badge = f'<b>{day}</b><span>{month}</span><small>{year}</small>' if day else f'<b>{month}</b><small>{year}</small>'
-    return f'''<li class="event" data-date="{sort}" data-until="{until}">
+    return f'''<li class="event" data-fixed="{name}" data-date="{sort}" data-until="{until}">
                 <div class="event-date{'' if day else ' month'}" aria-hidden="true">{badge}</div>
                 <div>
                   <h3>{title}</h3>
@@ -645,8 +651,8 @@ def fixed_event(day, month, year, title, when, datetime, sort, until):
               </li>'''
 
 FIXED_EVENTS = '\n              '.join([
-    fixed_event('31', 'Dec', '2026', 'Deadline for 2026 tax year donations', 'Thursday, December 31, 2026', '2026-12-31', '2026-12-31', '2026-12-31'),
-    fixed_event('', 'Dec', '2026', '4th Quarter Fundraiser', 'December 2026', '2026-12', '2026-12-31', '2026-12-31'),
+    fixed_event('tax-deadline-2026', '31', 'Dec', '2026', 'Deadline for 2026 tax year donations', 'Thursday, December 31, 2026', '2026-12-31', '2026-12-31', '2026-12-31'),
+    fixed_event('q4-fundraiser-2026', '', 'Dec', '2026', '4th Quarter Fundraiser', 'December 2026', '2026-12', '2026-12-31', '2026-12-31'),
 ])
 
 news_body = f'''<section class="pbody paper" id="resources">

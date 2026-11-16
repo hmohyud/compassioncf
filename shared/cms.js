@@ -13,7 +13,10 @@
 //
 // No API key is sent: these collections are publicly readable.
 
+import * as content from './content.js';   // for the dates written into a page that have since become events (content.datesOff)
+
 const DB = 'https://firestore.googleapis.com/v1/projects/compassioncf-web-site/databases/(default)/documents';
+const DONATE_PAGE = new URL('../donate/', import.meta.url).href;   // this site's donate page, wherever the site is served from
 
 /* ---------- Firestore REST ---------- */
 
@@ -106,7 +109,10 @@ function inline(src) {
   s = s.replace(/`([^`]+)`/g, (m, c) => stash(`<code>${c}</code>`));
   s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, text, url) => {
     const u = url.replace(/&amp;/g, '&');
-    return /^(https?:|mailto:)/i.test(u) ? stash(`<a href="${esc(u)}" target="_blank" rel="noopener">`) + text + stash('</a>') : text;
+    if (!/^(https?:|mailto:)/i.test(u)) return text;
+    // A link to this site's own donate page opens the donate window in place, like every other Donate link here.
+    const open = u.replace(/\/?$/, '/') === DONATE_PAGE ? `<a href="${esc(u)}" data-donate>` : `<a href="${esc(u)}" target="_blank" rel="noopener">`;
+    return stash(open) + text + stash('</a>');
   });
   s = s.replace(/(^|[\s(])(https?:\/\/[^\s<]+[^\s<.,;:!?)\]])/g, (m, pre, url) => pre + stash(`<a href="${url}" target="_blank" rel="noopener">${url}</a>`));
   s = s.replace(/(\*\*|__)(?=\S)([\s\S]+?)\1/g, (m, d, t) => `<strong>${t.trim()}</strong>`);
@@ -232,32 +238,44 @@ async function blogPost(el) {
 
 /* ---------- events ---------- */
 
+// An event can be for a whole month with no particular day (wholeMonth: true, its date any day of that month).
+// It shows the month only, and counts as upcoming until the month's last day.
+export const monthEnd = (d) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
+export const lastDay = (e, when = toDate(e.date)) => (when && e.wholeMonth === true ? monthEnd(when) : when);
+
 function eventItem(e, i) {
   const d = e.when;
-  const timed = d.getHours() || d.getMinutes();
-  const day = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const month = e.wholeMonth === true;
+  const timed = !month && (d.getHours() || d.getMinutes());
+  const day = d.toLocaleDateString('en-US', month ? { month: 'long', year: 'numeric' } : { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   const time = timed ? ` · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : '';
-  return `<li class="event" style="--i:${i}" data-date="${isoDay(d)}" data-no-edit>
-  <div class="event-date" aria-hidden="true"><b>${d.getDate()}</b><span>${d.toLocaleDateString('en-US', { month: 'short' })}</span><small>${d.getFullYear()}</small></div>
+  const stamp = month ? isoDay(d).slice(0, 7) : timed ? d.toISOString() : isoDay(d);
+  const badge = month
+    ? `<b>${d.toLocaleDateString('en-US', { month: 'short' })}</b><small>${d.getFullYear()}</small>`
+    : `<b>${d.getDate()}</b><span>${d.toLocaleDateString('en-US', { month: 'short' })}</span><small>${d.getFullYear()}</small>`;
+  return `<li class="event" style="--i:${i}" data-date="${isoDay(e.ends)}" data-no-edit>
+  <div class="event-date${month ? ' month' : ''}" aria-hidden="true">${badge}</div>
   <div>
     <h3>${esc(e.title || 'Event')}</h3>
-    <p class="event-meta"><time datetime="${timed ? d.toISOString() : isoDay(d)}">${day}${time}</time>${e.location ? ` · ${esc(e.location)}` : ''}</p>
+    <p class="event-meta"><time datetime="${stamp}">${day}${time}</time>${e.location ? ` · ${esc(e.location)}` : ''}</p>
     ${e.description ? `<div class="event-desc">${markdown(e.description)}</div>` : ''}
   </div>
 </li>`;
 }
 
 // The list may already hold dates written into the page itself. Each of those says when it ends
-// (data-until, its last day) and leaves the page by itself once that day has passed. Events from the
-// database join the same list in date order (data-date is where an item sorts).
+// (data-until, its last day) and leaves the page by itself once that day has passed. It also leaves
+// once an editor has moved it into the Events list (its data-fixed name is then in content.datesOff),
+// because from then on it is an event in the database like any other. Events from the database join
+// the same list in date order (data-date is where an item sorts).
 async function events(el) {
   const part = (k) => el.querySelector(`[data-events-${k}]`);
   const listEl = part('list');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  listEl.querySelectorAll('[data-until]').forEach((item) => {
+  const tidy = () => listEl.querySelectorAll('[data-until], [data-fixed]').forEach((item) => {
     const until = toDate(item.dataset.until);
-    if (until && until < today) item.remove();
+    if ((until && until < today) || content.datesOff.includes(item.dataset.fixed)) item.remove();
   });
   const settle = () => {
     const any = listEl.children.length > 0;
@@ -265,26 +283,35 @@ async function events(el) {
     part('empty').hidden = any;
     if (part('loading')) part('loading').hidden = true;
   };
-  try {
-    const upcoming = (await list('events'))
+  tidy();   // what is known already: a date that has passed, or one remembered as moved from an earlier visit
+  // Both answers are waited for before the list changes, so a moved date is swapped for its event in one step.
+  const [, found] = await Promise.allSettled([content.ready, list('events')]);
+  tidy();
+  if (found.status === 'fulfilled') {
+    const upcoming = found.value
       .filter((e) => e.isActive !== false)
       .map((e) => ({ ...e, when: toDate(e.date) }))
-      .filter((e) => e.when && e.when >= today)
-      .sort((a, b) => a.when - b.when);
+      .map((e) => ({ ...e, ends: lastDay(e, e.when) }))
+      .filter((e) => e.when && e.ends >= today)
+      // by date; on the same day a dated event comes before a whole-month one, then by name, so the order never jumps about
+      .sort((a, b) => (a.ends - b.ends) || ((a.wholeMonth === true) - (b.wholeMonth === true)) || String(a.title || '').localeCompare(String(b.title || '')));
+    const named = (text) => String(text || '').trim().toLowerCase();
     const holder = document.createElement('template');
     upcoming.forEach((e, i) => {
+      // An event with the same name as a date still written into the page replaces that copy, even if this
+      // browser couldn't learn that the date had been moved.
+      listEl.querySelectorAll('[data-fixed]').forEach((fixed) => { if (named(fixed.querySelector('h3')?.textContent) === named(e.title)) fixed.remove(); });
       holder.innerHTML = eventItem(e, i);
       const item = holder.content.firstElementChild;
       const later = [...listEl.children].find((other) => (other.dataset.date || '') > item.dataset.date);
       listEl.insertBefore(item, later || null);
     });
-    settle();
-  } catch (err) {
-    console.warn('[cms] events unavailable:', err.message);
+  } else {
+    console.warn('[cms] events unavailable:', found.reason?.message);
     const note = part('note');
     if (note) note.textContent = 'We couldn’t load the calendar just now. New dates are always shared with our mailing list first.';
-    settle();
   }
+  settle();
 }
 
 const mounts = { 'blog-list': blogList, 'blog-post': blogPost, events };

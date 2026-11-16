@@ -7,6 +7,7 @@ import {
   imageEntries, images, setImages, applyImages, isStored, describe, show, IMAGE_FIELD,
 } from '../content.js';
 import * as session from './session.js';
+import { ORIGINALS } from './originals.js';
 
 const ADMIN = new URL('../../admin/', import.meta.url).href;
 const css = Object.assign(document.createElement('link'), { rel: 'stylesheet', href: new URL('./admin.css', import.meta.url).href });
@@ -20,7 +21,8 @@ bar.setAttribute('role', 'region');
 bar.setAttribute('aria-label', 'Site editor');
 document.body.append(bar);
 
-// "Use the original wording", shown beside the text being edited when it differs from the page's own.
+// "Use the original wording", shown beside the text being edited when it differs from the line's first
+// wording. On a line that has been put back to its first wording it offers the newer one again.
 const pop = document.createElement('button');
 pop.type = 'button';
 pop.className = 'ed-pop';
@@ -58,7 +60,12 @@ let focused = null;   // the text entry being typed in
 const clean = (html) => normalize(sanitize(html));
 const shown = (entry) => (typeof edits[entry.key] === 'string' ? sanitize(edits[entry.key]) : entry.original);   // what visitors see now
 const isChanged = (entry) => clean(entry.el.innerHTML) !== clean(shown(entry));
-const isOriginal = (entry) => clean(entry.el.innerHTML) === clean(entry.original);
+const isBuiltIn = (entry) => clean(entry.el.innerHTML) === clean(entry.original);   // reads as the page itself is written: nothing needs saving for it
+// A line's first wording. For most lines that is how the page itself is written. For the lines the foundation
+// reworded before that wording was written into the pages, it is the earlier wording kept in originals.js.
+const hasEarlier = (entry) => typeof ORIGINALS[entry.key] === 'string';
+const first = (entry) => (hasEarlier(entry) ? sanitize(ORIGINALS[entry.key]) : entry.original);
+const isOriginal = (entry) => clean(entry.el.innerHTML) === clean(first(entry));
 const changes = () => entries.filter(isChanged);
 
 const picked = new Map();   // which photo -> { src, alt, preview } chosen while editing, or null for "back to the original"
@@ -203,7 +210,12 @@ function mark() {
 }
 
 function placePop() {
-  if (!editing || !focused || isOriginal(focused)) { pop.hidden = true; return; }
+  // Nothing to offer on a line that reads as it first did, unless the page carries a newer wording to go forward to.
+  const back = !!focused && !isOriginal(focused);
+  const forward = !!focused && !back && hasEarlier(focused) && !isBuiltIn(focused);
+  if (!editing || !(back || forward)) { pop.hidden = true; return; }
+  pop.textContent = back ? 'Use the original wording' : 'Use the newer wording';
+  pop.dataset.to = back ? 'original' : 'newer';
   const r = focused.el.getBoundingClientRect();
   pop.hidden = false;
   // above the text's top right corner, where it is least likely to cover the line before
@@ -222,7 +234,7 @@ async function save() {
     const nextEdits = { ...now.edits };
     const textChanges = changes();
     for (const entry of textChanges) {
-      if (isOriginal(entry)) delete nextEdits[entry.key];
+      if (isBuiltIn(entry)) delete nextEdits[entry.key];   // back to how the page is written: no saved change is needed
       else nextEdits[entry.key] = sanitize(entry.el.innerHTML);
     }
     if (textChanges.length) fields[TEXT_FIELD] = JSON.stringify(nextEdits);
@@ -393,7 +405,7 @@ bar.addEventListener('click', (e) => {
 pop.addEventListener('mousedown', (e) => e.preventDefault());   // keep the cursor in the text
 pop.addEventListener('click', () => {
   if (!focused) return;
-  focused.el.innerHTML = focused.original;
+  focused.el.innerHTML = pop.dataset.to === 'newer' ? focused.original : first(focused);
   mark();
 });
 
