@@ -139,16 +139,16 @@ export function mountGlobe(host, opts = {}) {
   const earthMat = new THREE.MeshPhongMaterial({ shininess: 15, specular: new THREE.Color(0x333333) });
   const earth = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 64), earthMat);
   scene.add(earth);
-  loader.load(asset('./textures/earth-day.jpg'), (t) => {
+  loader.load(asset('./textures/earth-day.webp'), (t) => {
     t.colorSpace = THREE.SRGBColorSpace; earthMat.map = t; earthMat.needsUpdate = true;
     wrap.classList.add('ready'); o.onReady && o.onReady();
   });
-  loader.load(asset('./textures/earth-topology.png'), (t) => { earthMat.bumpMap = t; earthMat.bumpScale = 0.02; earthMat.needsUpdate = true; });
+  loader.load(asset('./textures/earth-topology.webp'), (t) => { earthMat.bumpMap = t; earthMat.bumpScale = 0.02; earthMat.needsUpdate = true; });
 
   const cloudMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: o.cloudOpacity, depthWrite: false });
   const clouds = new THREE.Mesh(new THREE.SphereGeometry(1.02, 48, 48), cloudMat);
   cloudScene.add(clouds);
-  loader.load(asset('./textures/earth-clouds.png'), (t) => { t.colorSpace = THREE.SRGBColorSpace; cloudMat.map = t; cloudMat.needsUpdate = true; });
+  loader.load(asset('./textures/earth-clouds.webp'), (t) => { t.colorSpace = THREE.SRGBColorSpace; cloudMat.map = t; cloudMat.needsUpdate = true; });
 
   const tex = markerTexture(o.marker), hoverTex = markerTexture(o.hover);
   const maxCount = Math.max(...CLUSTERS.map((c) => c[2]));
