@@ -7,7 +7,7 @@
 import * as session from './session.js';
 import { markdown, splitTitle, toDate, lastDay, PUBLISHED_SITE } from '../cms.js';
 import { fetchChanges, fetchEdits, setEdits, setImages, setDatesOff, isStored, hasPhoto, isGray, photoUrl, isCurrent, sanitize, TEXT_DOC, TEXT_FIELD, IMAGE_FIELD, DATES_FIELD } from '../content.js';
-import { EARLIER, ORIGINALS } from './originals.js';
+import { EARLIER, ORIGINALS, WRITTEN_IN } from './originals.js';
 
 const root = document.querySelector('[data-admin-app]');
 const SITE = new URL('../../', import.meta.url).href;
@@ -456,7 +456,7 @@ const NO_BUTTON = {
 async function text() {
   loading('Loading the changes…');
   const { edits, images } = await fetchChanges();
-  const keys = Object.keys(edits).filter(isCurrent);   // wording saved before it was written into the pages themselves is not listed: it is part of the pages now
+  const keys = Object.keys(edits).filter((k) => isCurrent(k) && !WRITTEN_IN.has(k));   // wording that has since been written into the pages themselves is not listed: it is part of the pages now
   const photos = Object.keys(images).filter((k) => isStored(images[k]));
   const words = (html) => plainText(html).slice(0, 260) || '(empty)';
   // A saved change on a line that has an earlier wording either is that earlier wording (the line was put back) or is something newer still.

@@ -209,21 +209,21 @@ def starmap_svg():
 
 STARMAP = f'<div class="wave-art map-art"><div class="stars s1"></div>{starmap_svg()}</div>'
 
-# The programs, in the order they are numbered everywhere: on the programs page, in each page's
-# "Program · 0N", on the home page's cards, in the previous and next links under each program page,
-# and in the lists that name the other programs. To renumber them, change the order here.
+# The programs, in the order they appear everywhere: on the programs page, on the home page's cards,
+# in the previous and next links under each program page, and in the lists that name the other
+# programs. To reorder them, change the order here. (They were numbered, "01 — Program", until the
+# foundation asked on 17 November 2026 for the numbers to go.)
 #
 # Their names and words are the foundation's own, as the foundation wrote them in the site's editor
-# in November 2026 (when the first two programs took the names they have here).
+# in November 2026 (when the first two programs took the names they have here). The fourth is
+# "Global Human Needs Observatory" throughout, as the foundation settled on 17 November 2026; its
+# address keeps the earlier name (programs/global-needs-observatory/) so links to it still work.
 PROGRAMS = [
     ('scholarship-fund', 'The Peace Engineering Scholarship Fund', 'Ending Financial Gatekeeping in Peace Education'),
     ('research-initiative', 'The Global Peace Education Research Initiative', 'Peace Education Research On A Global Scale'),
     ('archive', 'The Archive Program', 'A multilingual, global digital library preserving peace education history'),
-    ('global-needs-observatory', 'The Global Needs Observatory', 'A needs-based framework and infrastructure for peace engineering'),
+    ('global-needs-observatory', 'Global Human Needs Observatory', 'A needs-based framework and infrastructure for peace engineering'),
 ]
-
-def number(slug):
-    return f'{[p[0] for p in PROGRAMS].index(slug) + 1:02d}'
 
 def give_card(kicker, h, p, label):
     return f'''<div class="give-card">
@@ -255,37 +255,15 @@ def pager(current):
         out += '<a class="next" href="{r}programs/"><small>Back to →</small><b>All programs</b></a>'
     return out + '</nav>'
 
-GLOBE_FACTS = [('3,898', 'places', '3898'), ('487', 'regions', '487'), ('6', 'continents', '')]
-
-# The participant globe, as a band under a program page (the Scholarship Fund and the Research Initiative).
-def globe_band():
-    return f'''<section class="globe-band" aria-labelledby="globe-h">
-      <div class="sky" aria-hidden="true"><div class="stars s1"></div><div class="stars s2"></div><div class="stars s3"></div></div>
-      <div class="wrap globe-band-in">
-        <div class="copy reveal">
-          <p class="eyebrow"><span class="dot"></span>Community member globe</p>
-          <h2 id="globe-h">A world already practicing <em>compassion</em></h2>
-          <p>Every point of light is a place where people have joined the Compassion Course. Drag the globe to explore, and look for your own corner of the world.</p>{facts(GLOBE_FACTS, 'where people have joined the course')}
-        </div>
-        <div class="hero-globe">
-          <div id="globe"></div>
-          <p class="hint"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M9 11.2V5.5a1.5 1.5 0 0 1 3 0V10h.5V8.5a1.5 1.5 0 0 1 3 0V10h.5a1.5 1.5 0 0 1 3 0v4.5A6.5 6.5 0 0 1 12.5 21h-.7a6 6 0 0 1-4.6-2.2L4.5 15.4a1.4 1.4 0 0 1 2-2L9 15z"/></svg> Drag to explore</p>
-        </div>
-      </div>
-    </section>'''
-
-GLOBE_JS = '''
-  <script type="module">
-    import { lazyGlobe } from '{s}globe-lazy.js';
-    lazyGlobe(document.getElementById('globe'), { marker: '246,184,96', hover: '240,120,100', maxSize: 620 });
-  </script>'''
+# (The Scholarship Fund and Research Initiative pages each ended with the participant globe until
+# 17 November 2026, when the foundation asked for it to be taken off both. The home page has its own.)
 
 # The sentence that closes a program page, and the two buttons under it, in the foundation's wording.
 HEAR_FROM_YOU = 'If you would like to contribute to this program, or would like to know more, we’d love to hear from you.'
 
 # ---------- programs ----------
 
-fund_hero = phero('{r}', 'The Peace Engineering Scholarship Fund', [('Programs', '{r}programs/')], f'Program · {number("scholarship-fund")}', 'The Peace Engineering Scholarship Fund', 'Ending Financial Gatekeeping in Peace Education',
+fund_hero = phero('{r}', 'The Peace Engineering Scholarship Fund', [('Programs', '{r}programs/')], 'Program', 'The Peace Engineering Scholarship Fund', 'Ending Financial Gatekeeping in Peace Education',
     lede='Scholarships and logistical support, so that peace education is never limited by privilege or circumstance.')
 
 fund_body = f'''<section class="pbody">
@@ -318,12 +296,10 @@ fund_body = f'''<section class="pbody">
           {other_programs('scholarship-fund')}
         </aside>
       </div>
-    </section>
-
-    {globe_band()}'''
+    </section>'''
 
 # This page was "The Compassion Course" until the foundation rewrote it in the editor as its research program.
-research_hero = phero('{r}', 'The Global Peace Education Research Initiative', [('Programs', '{r}programs/')], f'Program · {number("research-initiative")}', 'The Global Peace Education Research Initiative', 'Peace Education Research On A Global Scale')
+research_hero = phero('{r}', 'The Global Peace Education Research Initiative', [('Programs', '{r}programs/')], 'Program', 'The Global Peace Education Research Initiative', 'Peace Education Research On A Global Scale')
 
 research_body = f'''<section class="pbody">
       <div class="wrap article">
@@ -339,12 +315,10 @@ research_body = f'''<section class="pbody">
           {other_programs('research-initiative')}
         </aside>
       </div>
-    </section>
+    </section>'''
 
-    {globe_band()}'''
-
-archive_hero = phero('{r}', 'The Archive Program', [('Programs', '{r}programs/')], f'Program · {number("archive")}', 'The Archive Program', 'Preserving 25 years of peace education history',
-    extra=facts([('Hundreds', 'of hours', ''), ('25', 'years', ''), ('249', 'languages', '')], 'Becoming an online library of audio courses'))
+archive_hero = phero('{r}', 'The Archive Program', [('Programs', '{r}programs/')], 'Program', 'The Archive Program', 'Preserving 25 years of peace education history',
+    extra=facts([('Hundreds', 'of hours', ''), ('25', 'years', ''), ('Over 240', 'languages', '')], 'Becoming an online library of audio courses'))
 
 archive_body = f'''<section class="pbody">
       <div class="wrap article">
@@ -359,11 +333,11 @@ archive_body = f'''<section class="pbody">
           </ul>
 
           <h2 class="reveal">From recordings to a living library</h2>
-          <p class="reveal">The Archive Program is tasked with acquiring, preserving, translating, organizing and distributing the teachings in the form of an online library of audio courses in 249 languages.</p>
+          <p class="reveal">The Archive Program is tasked with acquiring, preserving, translating, organizing and distributing the teachings in the form of an online library of audio courses in over 240 languages.</p>
           <ol class="timeline reveal">
             <li class="done"><b>Acquire</b><span class="tag">Complete</span><span>Gathering decades of conference and workshop recordings.</span></li>
             <li><b>Protect</b><span>Protecting the original recordings for posterity.</span></li>
-            <li><b>Translate</b><span>Translating the teachings throughout the globe in 249 languages.</span></li>
+            <li><b>Translate</b><span>Translating the teachings throughout the globe in over 240 languages.</span></li>
             <li><b>Organize</b><span>Organizing a searchable resource, carefully curated for reference and self-study.</span></li>
             <li><b>Distribute</b><span>Distributing our digital library around the world.</span></li>
           </ol>
@@ -387,7 +361,7 @@ archive_body = f'''<section class="pbody">
 
 # The fourth program is still forming. Its text is the foundation's own; the three-line summary under it
 # only restates that paragraph.
-obs_hero = phero('{r}', 'The Global Needs Observatory', [('Programs', '{r}programs/')], f'Program · {number("global-needs-observatory")} · Forming', 'The Global Needs Observatory', 'A needs-based framework and infrastructure for peace engineering')
+obs_hero = phero('{r}', 'Global Human Needs Observatory', [('Programs', '{r}programs/')], 'Program · Forming', 'Global Human Needs Observatory', 'A needs-based framework and infrastructure for peace engineering')
 
 obs_body = f'''<section class="pbody">
       <div class="wrap article">
@@ -395,7 +369,7 @@ obs_body = f'''<section class="pbody">
           <p class="lead reveal">Mapping universal human needs, procuring resource data, and applying Intelligence to create breakthrough conflict resolution strategies.</p>
 
           <h2 class="reveal">What the Observatory is</h2>
-          <p class="reveal">Rooted in the Needs Awareness framework, the <strong>Global Needs Awareness Observatory</strong> is a scientifically credible system to identify and track universal human needs (such as autonomy, connection, meaning, safety, nutrition, security) on an individual, group, community and regional level, intelligently linking lived experiences to verified local resources.</p>
+          <p class="reveal">Rooted in the Needs Awareness framework, the <strong>Global Human Needs Observatory</strong> is a scientifically credible system to identify and track universal human needs (such as autonomy, connection, meaning, safety, nutrition, security) on an individual, group, community and regional level, intelligently linking lived experiences to verified local resources.</p>
           <dl class="glance reveal">
             <div><dt>Tracks</dt><dd>Universal human needs, such as autonomy, connection, meaning, safety, nutrition and security</dd></div>
             <div><dt>Across</dt><dd>Individual, group, community and regional levels</dd></div>
@@ -426,7 +400,7 @@ programs_hero = phero('{r}', 'Programs', [], 'Our programs', 'Ways we bring comp
 PROGRAM_ROWS = {
     'scholarship-fund': ('<img src="{s}img/hands.jpg" alt="" loading="lazy">', 'Scholarships and logistical support, so that peace education is never limited by privilege or circumstance.', 'See more about the fund', ''),
     'research-initiative': ('<img src="{s}img/online.jpg" alt="" loading="lazy">', 'Evaluating the impact of peace education training with robust science', 'See how the initiative works', ''),
-    'archive': (WAVE, '25 years of compassion-centered teaching are digitized, translated, and indexed into a global online library in 249 languages', 'Inside the archive', ''),
+    'archive': (WAVE, '25 years of compassion-centered teaching are digitized, translated, and indexed into a global online library in over 240 languages', 'Inside the archive', ''),
     'global-needs-observatory': (STARMAP, 'Mapping universal human needs, procuring resource data, and applying Intelligence to create breakthrough conflict resolution strategies.', 'Inside the Observatory', 'Forming'),
 }
 
@@ -438,7 +412,7 @@ def program_rows():
         rows.append(f'''<article class="prog reveal">
           <a class="prog-media" href="{slug}/" tabindex="-1" aria-hidden="true">{media}</a>
           <div>
-            <p class="prog-n">{number(slug)} — Program{tag}</p>
+            <p class="prog-n">Program{tag}</p>
             <h2><a href="{slug}/">{title}</a></h2>
             <p class="prog-sub">{sub}</p>
             <p>{text}</p>
@@ -916,11 +890,11 @@ CMS_JS = '\n  <script type="module" src="{s}cms.js"></script>'
 
 PAGES = [
     ('about/index.html', 'About us', 'Why peace education matters, our history, and who we are: the Compassion Course Foundation, a 501(c)(3) nonprofit.', 'about', about_hero, about_body, ''),
-    ('programs/index.html', 'Programs', 'The Peace Engineering Scholarship Fund, the Global Peace Education Research Initiative, the Archive Program and the Global Needs Observatory.', 'programs', programs_hero, programs_body, ''),
-    ('programs/scholarship-fund/index.html', 'The Peace Engineering Scholarship Fund', 'The Peace Engineering Scholarship Fund: scholarships and logistical support, so that peace education is never limited by privilege or circumstance.', 'programs', fund_hero, fund_body, GLOBE_JS),
-    ('programs/research-initiative/index.html', 'The Global Peace Education Research Initiative', 'The Global Peace Education Research Initiative: evaluating the impact of peace education training with robust science.', 'programs', research_hero, research_body, GLOBE_JS),
+    ('programs/index.html', 'Programs', 'The Peace Engineering Scholarship Fund, the Global Peace Education Research Initiative, the Archive Program and the Global Human Needs Observatory.', 'programs', programs_hero, programs_body, ''),
+    ('programs/scholarship-fund/index.html', 'The Peace Engineering Scholarship Fund', 'The Peace Engineering Scholarship Fund: scholarships and logistical support, so that peace education is never limited by privilege or circumstance.', 'programs', fund_hero, fund_body, ''),
+    ('programs/research-initiative/index.html', 'The Global Peace Education Research Initiative', 'The Global Peace Education Research Initiative: evaluating the impact of peace education training with robust science.', 'programs', research_hero, research_body, ''),
     ('programs/archive/index.html', 'The Archive Program', 'The Archive Program: a multilingual, global digital library preserving 25 years of peace education history.', 'programs', archive_hero, archive_body, ''),
-    ('programs/global-needs-observatory/index.html', 'The Global Needs Observatory', 'The Global Needs Observatory: a needs-based framework and infrastructure for peace engineering. This program is forming.', 'programs', obs_hero, obs_body, ''),
+    ('programs/global-needs-observatory/index.html', 'Global Human Needs Observatory', 'Global Human Needs Observatory: a needs-based framework and infrastructure for peace engineering. This program is forming.', 'programs', obs_hero, obs_body, ''),
     ('news/index.html', 'News and Updates', 'Essays, recommended podcast episodes, the Feelings and Needs List, upcoming dates and the mailing list of the Compassion Course Foundation.', 'news', news_hero, news_body, CMS_JS),
     ('board/index.html', 'Board members', 'Meet the board guiding the Compassion Course Foundation.', 'about', board_hero, board_body, ''),
     ('blog/index.html', 'Essays', 'Essays and reflections from Thom Bond and the Compassion Course community.', 'news', blog_hero, blog_body, CMS_JS),
@@ -966,7 +940,7 @@ def home_cards():
         cards.append(f'''<article class="card reveal">
             <div class="card-img">{media}</div>
             <div class="card-body">
-              <p class="card-n">{number(slug)} — Program{tag}</p>
+              <p class="card-n">Program{tag}</p>
               <h3>{title}</h3>
               <p>{text}</p>
               <a href="programs/{slug}/" class="more">{label} <span aria-hidden="true">→</span></a>
