@@ -1,7 +1,7 @@
 // Changes made in the site's editor, applied on top of the text and photos built into each page.
 //
 // An editor signed in at /admin/ can click any text on the site and change it. Those edits are kept in
-// the foundation's database as one small JSON object, { "<key>": "<html>" }, and applied here for every
+// the site's database as one small JSON object, { "<key>": "<html>" }, and applied here for every
 // visitor. A key is a hash of the sentence as it is written in the page's own HTML, so:
 //   - an edit follows that sentence wherever it appears (the footer line is edited once for all pages);
 //   - if the sentence itself is later changed in the code, the edit no longer matches and is dropped.
@@ -16,8 +16,9 @@
 //
 // The editor's own code (shared/admin/) is loaded only in a browser that has signed in.
 
-const DB = 'https://firestore.googleapis.com/v1/projects/compassioncf-web-site/databases/(default)/documents';
-export const TEXT_DOC = 'content/home';   // an existing document: public to read, writable by admin accounts
+const DB = 'https://firestore.googleapis.com/v1/projects/compassioncf-editor/databases/(default)/documents';   // the site's own database
+const EARLIER_DB = 'https://firestore.googleapis.com/v1/projects/compassioncf-web-site/databases/(default)/documents';   // see fetchChanges
+export const TEXT_DOC = 'content/home';   // one document: anyone may read it, only editors may write it
 export const TEXT_FIELD = 'siteText';     // one string field holding the JSON object of text edits
 export const IMAGE_FIELD = 'siteImages';  // another, holding the JSON object of swapped photos
 export const DATES_FIELD = 'siteDatesOff'; // a third: a JSON list naming the dates written into a page that an editor has moved into the Events list
@@ -25,7 +26,7 @@ export const STORAGE = 'https://firebasestorage.googleapis.com/v0/b/compassioncf
 const CACHE = 'ccf-text';                 // last known changes, so returning visitors don't see the old page first
 const IMAGE_CACHE = 'ccf-images';
 const DATES_CACHE = 'ccf-dates';
-const SESSION = 'ccf-admin';
+const SESSION = 'ccf-editor';             // set by shared/admin/session.js while someone is signed in
 const ROOT = new URL('../', import.meta.url);   // the site's own root, wherever it is being served from
 
 /* ---------- which text can be edited ---------- */
@@ -204,13 +205,27 @@ const parseList = (raw) => {
   }
 };
 
-// The text edits, swapped photos and moved dates as they are in the database right now. Throws if they can't be read.
-export async function fetchChanges() {
-  const res = await fetch(`${DB}/${TEXT_DOC}?mask.fieldPaths=${TEXT_FIELD}&mask.fieldPaths=${IMAGE_FIELD}&mask.fieldPaths=${DATES_FIELD}`);
-  if (res.status === 404) return { edits: {}, images: {}, datesOff: [] };
+// What one database holds of them, or null if nothing has ever been saved there. Throws if it can't be read.
+async function changesIn(db) {
+  const res = await fetch(`${db}/${TEXT_DOC}?mask.fieldPaths=${TEXT_FIELD}&mask.fieldPaths=${IMAGE_FIELD}&mask.fieldPaths=${DATES_FIELD}`);
+  if (res.status === 404) return null;
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const doc = await res.json();
   return { edits: parseMap(doc.fields?.[TEXT_FIELD]?.stringValue), images: parseMap(doc.fields?.[IMAGE_FIELD]?.stringValue), datesOff: parseList(doc.fields?.[DATES_FIELD]?.stringValue) };
+}
+
+// The text edits, swapped photos and moved dates as they are in the database right now. Throws if they can't be read.
+//
+// While the site moves to its own database: until something has been saved there, what was saved in the
+// earlier database still applies, so nothing an editor changed disappears on the day of the move. The
+// first save, or the editor's copying step, puts it in the new one, and from then on only that is read.
+// `ownOnly` asks for the site's own database alone (the copying step needs to know what is really there).
+// To be removed, with EARLIER_DB, once the move is done.
+export async function fetchChanges({ ownOnly = false } = {}) {
+  const nothing = { edits: {}, images: {}, datesOff: [] };
+  const own = await changesIn(DB);
+  if (own || ownOnly) return own || nothing;
+  return (await changesIn(EARLIER_DB).catch(() => null)) || nothing;
 }
 export const fetchEdits = async () => (await fetchChanges()).edits;
 

@@ -4,10 +4,13 @@
 
 import {
   entries, sanitize, normalize, fetchChanges, setEdits, edits, TEXT_DOC, TEXT_FIELD,
-  imageEntries, images, setImages, applyImages, isStored, describe, show, IMAGE_FIELD,
+  imageEntries as photosOnThePage, images, setImages, applyImages, isStored, describe, show, IMAGE_FIELD,
 } from '../content.js';
 import * as session from './session.js';
 import { ORIGINALS } from './originals.js';
+
+// The photos an editor may swap. None while the site has nowhere to keep a new file (see PHOTO_SWAPS in session.js).
+const imageEntries = session.PHOTO_SWAPS ? photosOnThePage : [];
 
 const ADMIN = new URL('../../admin/', import.meta.url).href;
 const css = Object.assign(document.createElement('link'), { rel: 'stylesheet', href: new URL('./admin.css', import.meta.url).href });
@@ -458,7 +461,7 @@ document.addEventListener('load', (e) => { if (editing && e.target.tagName === '
 session.onChange(() => { if (!session.current() && editing) cancel(); render(); });
 
 render();
-session.isAdmin().then((ok) => {
+session.mayEdit().then((ok) => {
   if (ok || !session.current()) return;
-  bar.innerHTML = `<span class="edbar-msg"><b class="bad">${esc(session.current().email)} is signed in but isn’t set up as an editor.</b></span><button type="button" data-ed="out">Sign out</button>`;
+  bar.innerHTML = `<span class="edbar-msg"><b class="bad">${esc(session.current().email)} is signed in but isn’t on the list of editors.</b></span><button type="button" data-ed="out">Sign out</button>`;
 }).catch((err) => console.warn('[editor] could not check the account:', err.detail || err.message));

@@ -1,25 +1,28 @@
 // Sign-in and database access for the site's editors.
 //
-// Editors use the foundation's existing admin accounts: Firebase Authentication, email and password,
-// in the project compassioncf-web-site. Nothing here decides who may change what; the database's own
-// rules do that. This file signs a person in, keeps them signed in on this browser, and sends their
-// requests with proof of who they are.
+// Editors sign in with Google. The sign-in service is Firebase Authentication in the site's own
+// project, compassioncf-editor. Who may edit is not decided here: the project's database rules hold
+// the list of Google addresses that may, and refuse everyone else. This file signs a person in,
+// keeps them signed in on this browser, and sends their requests with proof of who they are.
 //
-// The project's public web settings are not written into this repository. They are read, when someone
-// signs in, from the settings script Firebase Hosting publishes for the project.
+// The project's public web settings are not written into this repository. They are read, when the
+// sign-in screen opens, from a small settings file the project publishes at its own address.
 
-const PROJECT = 'compassioncf-web-site';
-const SETTINGS_SCRIPT = `https://${PROJECT}.web.app/__/firebase/init.js`;
-const AUTH = 'https://identitytoolkit.googleapis.com/v1';
+const PROJECT = 'compassioncf-editor';
+const SETTINGS_SCRIPT = `https://${PROJECT}.web.app/editor-settings.js`;
+const GOOGLE_SIGN_IN = 'https://www.gstatic.com/firebasejs/12.4.0';   // Google's own sign-in code, loaded only on the sign-in screen
 const TOKENS = 'https://securetoken.googleapis.com/v1/token';
 export const DB = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
-export const OLD_ADMIN = `https://${PROJECT}.web.app/admin`;
 
-const STORE = 'ccf-admin';      // the signed-in session (shared/content.js looks for this to load the editor)
-const KEY_STORE = 'ccf-key';
-const ADMIN_STORE = 'ccf-admin-ok';
+const STORE = 'ccf-editor';      // the signed-in session (shared/content.js looks for this to load the editor)
+const SETTINGS_STORE = 'ccf-editor-settings';
+const EDITOR_STORE = 'ccf-editor-ok';
 
-// kind: 'credentials' | 'network' | 'denied' | 'missing' | 'expired' | 'settings' | 'other'
+// Swapping photos needs somewhere to keep the new files. The site's own project has no file storage
+// (its plan does not include any), so the editor does not offer it for now.
+export const PHOTO_SWAPS = false;
+
+// kind: 'cancelled' | 'blocked' | 'network' | 'denied' | 'missing' | 'expired' | 'settings' | 'other'
 export class Fail extends Error {
   constructor(kind, message, detail = '') {
     super(message);
@@ -32,15 +35,15 @@ const NETWORK = 'Couldn’t reach the service. Check the connection and try agai
 
 /* ---------- the project's web settings ---------- */
 
-let keyPromise = null;
-function apiKey() {
-  if (keyPromise) return keyPromise;
+let settingsPromise = null;
+function settings() {
+  if (settingsPromise) return settingsPromise;
   let cached = null;
-  try { cached = sessionStorage.getItem(KEY_STORE); } catch { /* private window */ }
-  if (cached) return (keyPromise = Promise.resolve(cached));
+  try { cached = JSON.parse(sessionStorage.getItem(SETTINGS_STORE)); } catch { /* private window, or nothing kept */ }
+  if (cached && cached.apiKey) return (settingsPromise = Promise.resolve(cached));
 
-  keyPromise = new Promise((resolve, reject) => {
-    // The settings script calls firebase.initializeApp({...}); stand in for it just long enough to read them.
+  settingsPromise = new Promise((resolve, reject) => {
+    // The settings file calls firebase.initializeApp({...}); stand in for it just long enough to read them.
     const had = Object.prototype.hasOwnProperty.call(window, 'firebase');
     const before = window.firebase;
     const script = document.createElement('script');
@@ -51,10 +54,11 @@ function apiKey() {
     };
     const failed = () => finish(reject, new Fail('settings', 'The sign-in settings couldn’t be loaded. Try again in a moment.', SETTINGS_SCRIPT));
     window.firebase = {
-      initializeApp: (settings) => {
-        if (!settings || !settings.apiKey) return failed();
-        try { sessionStorage.setItem(KEY_STORE, settings.apiKey); } catch { /* private window */ }
-        finish(resolve, settings.apiKey);
+      initializeApp: (found) => {
+        if (!found || !found.apiKey) return failed();
+        const kept = { apiKey: found.apiKey, authDomain: found.authDomain, projectId: found.projectId, appId: found.appId };
+        try { sessionStorage.setItem(SETTINGS_STORE, JSON.stringify(kept)); } catch { /* private window */ }
+        finish(resolve, kept);
       },
     };
     script.src = SETTINGS_SCRIPT;
@@ -62,9 +66,10 @@ function apiKey() {
     script.onload = () => setTimeout(failed, 0);   // no effect if the settings were already read
     document.head.append(script);
   });
-  keyPromise.catch(() => { keyPromise = null; });   // let the next attempt try again
-  return keyPromise;
+  settingsPromise.catch(() => { settingsPromise = null; });   // let the next attempt try again
+  return settingsPromise;
 }
+const apiKey = async () => (await settings()).apiKey;
 
 /* ---------- the session ---------- */
 
@@ -90,7 +95,7 @@ const session = () => current() || memory;
 
 export function signOut() {
   memory = null;
-  try { localStorage.removeItem(STORE); sessionStorage.removeItem(ADMIN_STORE); } catch { /* private window */ }
+  try { localStorage.removeItem(STORE); sessionStorage.removeItem(EDITOR_STORE); } catch { /* private window */ }
   changed();
 }
 window.addEventListener('storage', (e) => { if (e.key === STORE) changed(); });
@@ -108,38 +113,68 @@ async function request(url, options) {
   return { res, body };
 }
 
-const signInProblem = (status, code) => {
-  if (/INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND|INVALID_EMAIL|MISSING_PASSWORD|MISSING_EMAIL/.test(code)) return new Fail('credentials', 'That email and password don’t match an account.');
-  if (/TOO_MANY_ATTEMPTS/.test(code)) return new Fail('credentials', 'Too many tries. Wait a few minutes, then try again.');
-  if (/USER_DISABLED/.test(code)) return new Fail('credentials', 'This account has been switched off.');
-  if (status === 403 || /API key|API_KEY|referer|blocked/i.test(code)) return new Fail('settings', 'The sign-in service refused a request from this site.', code);
-  return new Fail('other', 'Sign-in didn’t work. Try again in a moment.', code || `HTTP ${status}`);
-};
+/* ---------- signing in with Google ---------- */
 
-export async function signIn(email, password) {
-  const key = await apiKey();
-  const { res, body } = await request(`${AUTH}/accounts:signInWithPassword?key=${key}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password, returnSecureToken: true }),
-  });
-  if (!res.ok || !body?.idToken) throw signInProblem(res.status, body?.error?.message || '');
-  try { sessionStorage.removeItem(ADMIN_STORE); } catch { /* private window */ }
-  save({ email: body.email, uid: body.localId, idToken: body.idToken, refreshToken: body.refreshToken, exp: Date.now() + (Number(body.expiresIn) - 60) * 1000 });
-  changed();
-  return session();
+// Google's sign-in code and this project's settings, fetched together. The session itself is kept by
+// this file (above), so Google's code is told to keep nothing of its own.
+let googlePromise = null;
+function google() {
+  googlePromise ||= Promise.all([settings(), import(`${GOOGLE_SIGN_IN}/firebase-app.js`), import(`${GOOGLE_SIGN_IN}/firebase-auth.js`)])
+    .then(([found, appCode, authCode]) => {
+      const app = appCode.getApps().find((a) => a.name === STORE) || appCode.initializeApp(found, STORE);
+      let auth;
+      try {
+        auth = authCode.initializeAuth(app, { persistence: authCode.inMemoryPersistence, popupRedirectResolver: authCode.browserPopupRedirectResolver });
+      } catch {
+        auth = authCode.getAuth(app);   // already set up on this page
+      }
+      return { authCode, auth };
+    });
+  googlePromise.catch(() => { googlePromise = null; });   // let the next attempt try again
+  return googlePromise;
 }
 
-// Always answers the same way, so it can't be used to find out which addresses have accounts.
-export async function resetPassword(email) {
-  const key = await apiKey();
-  const { res, body } = await request(`${AUTH}/accounts:sendOobCode?key=${key}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ requestType: 'PASSWORD_RESET', email }),
-  });
-  const code = body?.error?.message || '';
-  if (!res.ok && !/EMAIL_NOT_FOUND|INVALID_EMAIL/.test(code)) throw signInProblem(res.status, code);
+// Called when the sign-in screen is shown. A browser only lets a page open a new window while it is
+// still handling the click, so everything the button needs is fetched before it is pressed.
+export const prepare = () => google().then(() => true, () => false);
+
+const signInProblem = (err) => {
+  const code = String(err?.code || '');
+  if (err instanceof Fail) return err;
+  if (/popup-closed-by-user|cancelled-popup-request|user-cancelled/.test(code)) return new Fail('cancelled', 'The Google window was closed before sign-in finished.');
+  if (/popup-blocked/.test(code)) return new Fail('blocked', 'This browser stopped the Google window from opening. Allow pop-ups for this site, then press the button again.');
+  if (/unauthorized-domain/.test(code)) return new Fail('settings', 'Google sign-in isn’t switched on for this address.', location.hostname);
+  if (/operation-not-allowed/.test(code)) return new Fail('settings', 'Google sign-in isn’t switched on for this site.', code);
+  if (/network-request-failed/.test(code)) return new Fail('network', NETWORK);
+  if (/user-disabled/.test(code)) return new Fail('other', 'This account has been switched off.');
+  return new Fail('other', 'Sign-in didn’t work. Try again in a moment.', code || String(err?.message || ''));
+};
+
+export async function signIn() {
+  let ready;
+  try {
+    ready = await google();
+  } catch (err) {
+    // A browser may not fetch a failed piece of code a second time on the same page, hence "reload".
+    throw err instanceof Fail ? err : new Fail('settings', 'Google’s sign-in couldn’t be loaded. Check the connection, then reload this page and try again.', String(err?.message || err));
+  }
+  const { authCode, auth } = ready;
+  const provider = new authCode.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });   // always ask which Google account, so a shared computer doesn't pick one silently
+  let user;
+  let idToken;
+  try {
+    ({ user } = await authCode.signInWithPopup(auth, provider));
+    idToken = await user.getIdToken();
+  } catch (err) {
+    throw signInProblem(err);
+  }
+  const exp = Number(claims(idToken).exp) * 1000 || Date.now() + 3600 * 1000;
+  try { sessionStorage.removeItem(EDITOR_STORE); } catch { /* private window */ }
+  save({ email: user.email || '', uid: user.uid, idToken, refreshToken: user.refreshToken, exp: exp - 60 * 1000 });
+  authCode.signOut(auth).catch(() => {});   // Google's code lets go of its copy; the session above is the one in use
+  changed();
+  return session();
 }
 
 let refreshing = null;
@@ -173,21 +208,20 @@ function claims(idToken) {
   }
 }
 
-// The same two tests the foundation's previous admin panel used: an "admin" claim on the account,
-// or a document admins/<user id> with role "admin". The database rules have the final say either way.
-export async function isAdmin() {
+// Whether the signed-in person is on the list of editors. The database's rules hold that list, so the
+// question is put to the database itself: only an editor is allowed to look at the inbox.
+export async function mayEdit() {
   const s = session();
   if (!s) return false;
-  try { if (sessionStorage.getItem(ADMIN_STORE) === s.uid) return true; } catch { /* private window */ }
-  let ok = claims(await token()).admin === true;
-  if (!ok) {
-    try {
-      ok = (await get('admins', s.uid)).role === 'admin';
-    } catch (err) {
-      if (err.kind !== 'denied' && err.kind !== 'missing') throw err;
-    }
+  try { if (sessionStorage.getItem(EDITOR_STORE) === s.uid) return true; } catch { /* private window */ }
+  let ok = false;
+  try {
+    await call('contactSubmissions', { query: 'pageSize=1' });
+    ok = true;
+  } catch (err) {
+    if (err.kind !== 'denied') throw err;
   }
-  if (ok) { try { sessionStorage.setItem(ADMIN_STORE, s.uid); } catch { /* private window */ } }
+  if (ok) { try { sessionStorage.setItem(EDITOR_STORE, s.uid); } catch { /* private window */ } }
   return ok;
 }
 
@@ -279,53 +313,20 @@ export async function setFields(docPath, values) {
 }
 export const setField = (docPath, field, value) => setFields(docPath, { [field]: value });
 
-/* ---------- files, as the signed-in person ---------- */
+// Writes a document under a chosen name, field for field as given in the database's own notation.
+// Used once, to bring the essays and events over from the previous database with their addresses unchanged.
+export async function copyIn(collection, id, fields) {
+  const names = Object.keys(fields || {});
+  if (!names.length) throw new Fail('other', 'There was nothing to copy.');
+  const mask = names.map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
+  await call(`${collection}/${encodeURIComponent(id)}`, { method: 'PATCH', query: mask, body: { fields } });
+}
 
-const FILES = `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(`${PROJECT}.firebasestorage.app`)}/o`;
+/* ---------- files ---------- */
 
-// The one folder the foundation's storage is known to accept pictures in from an admin account:
-// the previous admin panel uploads board members' photos there.
-export const PHOTO_FOLDER = 'board-photos';
+export const PHOTO_FOLDER = 'site-photos';
 
-const fileProblem = (status, answer) => {
-  const detail = `${answer?.error?.message || `HTTP ${status}`}`;
-  if (status === 403) return new Fail('denied', 'The file storage refused that upload. This account may not have permission for it.', detail);
-  if (status === 402) return new Fail('other', 'The foundation’s file storage is full or over its limit.', detail);
-  if (status === 413) return new Fail('other', 'That file is too large to upload.', detail);
-  return new Fail('other', 'The upload didn’t work. Try again in a moment.', detail);
-};
-
-// Uploads one file to the foundation's storage and returns its public address. The request has the same
-// form Firebase's own code sends for a simple upload: the file's details and its bytes in one message.
-export async function upload(path, blob, retried = false) {
-  const idToken = await token();
-  const type = blob.type || 'application/octet-stream';
-  const boundary = `${Math.random().toString().slice(2)}${Math.random().toString().slice(2)}`;
-  const details = JSON.stringify({ name: path, contentType: type, cacheControl: 'public, max-age=31536000' });   // the name is new each time, so it can be kept for a year
-  const body = await new Blob([
-    `--${boundary}\r\nContent-Type: application/json; charset=utf-8\r\n\r\n${details}\r\n--${boundary}\r\nContent-Type: ${type}\r\n\r\n`,
-    blob,
-    `\r\n--${boundary}--`,
-  ]).arrayBuffer();
-  const auth = { Authorization: `Firebase ${idToken}` };
-  const { res, body: answer } = await request(`${FILES}?name=${encodeURIComponent(path)}`, {
-    method: 'POST',
-    headers: { ...auth, 'X-Goog-Upload-Protocol': 'multipart', 'Content-Type': `multipart/related; boundary=${boundary}` },
-    body,
-  });
-  if (res.status === 401 && !retried) {
-    await token(true);
-    return upload(path, blob, true);
-  }
-  if (res.status === 401) { signOut(); throw new Fail('expired', 'Your sign-in has ended. Please sign in again.'); }
-  if (!res.ok) throw fileProblem(res.status, answer);
-
-  // The address visitors can load the file from carries a token that the storage issues with the file.
-  let tokens = answer?.downloadTokens;
-  if (!tokens) {
-    const about = await request(`${FILES}/${encodeURIComponent(path)}`, { headers: auth });
-    tokens = about.body?.downloadTokens;
-  }
-  if (!tokens) throw new Fail('other', 'The photo was uploaded, but its address couldn’t be read. Try again in a moment.');
-  return `${FILES}/${encodeURIComponent(path)}?alt=media&token=${encodeURIComponent(String(tokens).split(',')[0])}`;
+// See PHOTO_SWAPS above: there is nowhere to put a new photo yet.
+export async function upload() {
+  throw new Fail('other', 'Photos can’t be changed from the editor at the moment.');
 }

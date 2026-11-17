@@ -1,6 +1,6 @@
-// Live content from the foundation's own database: the public Firestore collections
-// the foundation's admin panel writes to (blogPosts, events), fetched over Firestore's REST API,
-// so new essays and events published there show up here without editing this site.
+// Live content from the site's own database: the essays and events its editor writes (the Firestore
+// collections blogPosts and events), fetched over Firestore's REST API, so a new essay or event shows
+// up here without editing this site.
 //
 // Pages opt in with a data-cms attribute:
 //   [data-cms="blog-list"]  cards into [data-posts]; data-href (link prefix, default "post.html?id="),
@@ -11,20 +11,27 @@
 //   [data-cms="events"]     upcoming events into [data-events-list], beside any dates written into
 //                           the page there; shows [data-events-empty] when the list ends up empty
 //
-// No API key is sent: these collections are publicly readable.
+// No API key is sent. Events can be read by anyone; of the essays, only published ones can, and the
+// database refuses a request for essays that does not itself ask for published ones only.
 
 import * as content from './content.js';   // for the dates written into a page that have since become events (content.datesOff)
 
-const DB = 'https://firestore.googleapis.com/v1/projects/compassioncf-web-site/databases/(default)/documents';
+const DB = 'https://firestore.googleapis.com/v1/projects/compassioncf-editor/databases/(default)/documents';
+// While the site moves to its own database: until an editor has copied the essays across (the editor's
+// "Copy the essays, events and wording across"), the new database has none, and the essays are still read
+// from the earlier one, where anyone may list them. To be removed once the essays are across.
+const EARLIER_DB = 'https://firestore.googleapis.com/v1/projects/compassioncf-web-site/databases/(default)/documents';
 const DONATE_PAGE = new URL('../donate/', import.meta.url).href;   // this site's donate page, wherever the site is served from
 
 /* ---------- Firestore REST ---------- */
 
-async function getJSON(url) {
+async function getJSON(url, send) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 10000);
   try {
-    const res = await fetch(url, { signal: ctrl.signal });
+    const res = await fetch(url, send
+      ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(send), signal: ctrl.signal }
+      : { signal: ctrl.signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } finally {
@@ -46,19 +53,30 @@ function value(v) {
 const fields = (f = {}) => Object.fromEntries(Object.entries(f).map(([k, v]) => [k, value(v)]));
 const toDoc = (d) => ({ id: d.name.split('/').pop(), ...fields(d.fields) });
 
-export async function list(collection) {
+export async function list(collection, db = DB) {
   const out = [];
   let token = '';
   do {
-    const page = await getJSON(`${DB}/${collection}?pageSize=100${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`);
+    const page = await getJSON(`${db}/${collection}?pageSize=100${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`);
     (page.documents || []).forEach((d) => out.push(toDoc(d)));
     token = page.nextPageToken;
   } while (token && out.length < 500);
   return out;
 }
 
-export async function get(collection, id) {
-  return toDoc(await getJSON(`${DB}/${collection}/${encodeURIComponent(id)}`));
+export async function get(collection, id, db = DB) {
+  return toDoc(await getJSON(`${db}/${collection}/${encodeURIComponent(id)}`));
+}
+
+// The published essays. Asked for as a query that names "published" itself, which is the only kind of
+// request for essays the database answers for someone who is not signed in.
+async function published() {
+  const found = await getJSON(`${DB}:runQuery`, { structuredQuery: {
+    from: [{ collectionId: 'blogPosts' }],
+    where: { fieldFilter: { field: { fieldPath: 'isPublished' }, op: 'EQUAL', value: { booleanValue: true } } },
+    limit: 500,
+  } });
+  return (Array.isArray(found) ? found : []).filter((row) => row.document).map((row) => toDoc(row.document));
 }
 
 /* ---------- text helpers ---------- */
@@ -178,7 +196,9 @@ function postCard(p, i, href) {
 }
 
 export async function publishedPosts() {
-  const posts = (await list('blogPosts')).filter((p) => p.isPublished !== false);
+  let found = await published();
+  if (!found.length) found = await list('blogPosts', EARLIER_DB).catch(() => []);   // not copied across yet
+  const posts = found.filter((p) => p.isPublished !== false);
   return posts.sort((a, b) => (toDate(b.publishedAt) || 0) - (toDate(a.publishedAt) || 0));
 }
 
@@ -210,7 +230,7 @@ async function blogPost(el) {
   const slot = (k) => document.querySelector(`[data-post-${k}]`);
   try {
     if (!id) throw new Error('no post id');
-    const p = await get('blogPosts', id);
+    const p = await get('blogPosts', id).catch(() => get('blogPosts', id, EARLIER_DB));   // the earlier database, until the essays are across
     if (p.isPublished === false) throw new Error('not published');
     const [title, sub] = splitTitle(p.title);
     const d = toDate(p.publishedAt);
