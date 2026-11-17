@@ -17,11 +17,11 @@
 import * as content from './content.js';   // for the dates written into a page that have since become events (content.datesOff)
 
 const DB = 'https://firestore.googleapis.com/v1/projects/compassioncf-editor/databases/(default)/documents';
-// While the site moves to its own database: until an editor has copied the essays across (the editor's
-// "Copy the essays, events and wording across"), the new database has none, and the essays are still read
-// from the earlier one, where anyone may list them. To be removed once the essays are across.
-const EARLIER_DB = 'https://firestore.googleapis.com/v1/projects/compassioncf-web-site/databases/(default)/documents';
 const DONATE_PAGE = new URL('../donate/', import.meta.url).href;   // this site's donate page, wherever the site is served from
+// The published site. What is kept in the database is read by its visitors, so a link the editor saves there
+// names this address, even when the editor was running on a copy of the site on someone's own computer.
+export const PUBLISHED_SITE = 'https://compassioncf.com/';
+const DONATE_PAGES = [DONATE_PAGE, `${PUBLISHED_SITE}donate/`];
 
 /* ---------- Firestore REST ---------- */
 
@@ -53,19 +53,19 @@ function value(v) {
 const fields = (f = {}) => Object.fromEntries(Object.entries(f).map(([k, v]) => [k, value(v)]));
 const toDoc = (d) => ({ id: d.name.split('/').pop(), ...fields(d.fields) });
 
-export async function list(collection, db = DB) {
+export async function list(collection) {
   const out = [];
   let token = '';
   do {
-    const page = await getJSON(`${db}/${collection}?pageSize=100${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`);
+    const page = await getJSON(`${DB}/${collection}?pageSize=100${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`);
     (page.documents || []).forEach((d) => out.push(toDoc(d)));
     token = page.nextPageToken;
   } while (token && out.length < 500);
   return out;
 }
 
-export async function get(collection, id, db = DB) {
-  return toDoc(await getJSON(`${db}/${collection}/${encodeURIComponent(id)}`));
+export async function get(collection, id) {
+  return toDoc(await getJSON(`${DB}/${collection}/${encodeURIComponent(id)}`));
 }
 
 // The published essays. Asked for as a query that names "published" itself, which is the only kind of
@@ -129,7 +129,7 @@ function inline(src) {
     const u = url.replace(/&amp;/g, '&');
     if (!/^(https?:|mailto:)/i.test(u)) return text;
     // A link to this site's own donate page opens the donate window in place, like every other Donate link here.
-    const open = u.replace(/\/?$/, '/') === DONATE_PAGE ? `<a href="${esc(u)}" data-donate>` : `<a href="${esc(u)}" target="_blank" rel="noopener">`;
+    const open = DONATE_PAGES.includes(u.replace(/\/?$/, '/')) ? `<a href="${esc(u)}" data-donate>` : `<a href="${esc(u)}" target="_blank" rel="noopener">`;
     return stash(open) + text + stash('</a>');
   });
   s = s.replace(/(^|[\s(])(https?:\/\/[^\s<]+[^\s<.,;:!?)\]])/g, (m, pre, url) => pre + stash(`<a href="${url}" target="_blank" rel="noopener">${url}</a>`));
@@ -196,9 +196,7 @@ function postCard(p, i, href) {
 }
 
 export async function publishedPosts() {
-  let found = await published();
-  if (!found.length) found = await list('blogPosts', EARLIER_DB).catch(() => []);   // not copied across yet
-  const posts = found.filter((p) => p.isPublished !== false);
+  const posts = (await published()).filter((p) => p.isPublished !== false);
   return posts.sort((a, b) => (toDate(b.publishedAt) || 0) - (toDate(a.publishedAt) || 0));
 }
 
@@ -230,7 +228,7 @@ async function blogPost(el) {
   const slot = (k) => document.querySelector(`[data-post-${k}]`);
   try {
     if (!id) throw new Error('no post id');
-    const p = await get('blogPosts', id).catch(() => get('blogPosts', id, EARLIER_DB));   // the earlier database, until the essays are across
+    const p = await get('blogPosts', id);
     if (p.isPublished === false) throw new Error('not published');
     const [title, sub] = splitTitle(p.title);
     const d = toDate(p.publishedAt);

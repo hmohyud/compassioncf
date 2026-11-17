@@ -313,15 +313,6 @@ export async function setFields(docPath, values) {
 }
 export const setField = (docPath, field, value) => setFields(docPath, { [field]: value });
 
-// Writes a document under a chosen name, field for field as given in the database's own notation.
-// Used once, to bring the essays and events over from the previous database with their addresses unchanged.
-export async function copyIn(collection, id, fields) {
-  const names = Object.keys(fields || {});
-  if (!names.length) throw new Fail('other', 'There was nothing to copy.');
-  const mask = names.map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
-  await call(`${collection}/${encodeURIComponent(id)}`, { method: 'PATCH', query: mask, body: { fields } });
-}
-
 /* ---------- files ---------- */
 
 export const PHOTO_FOLDER = 'site-photos';

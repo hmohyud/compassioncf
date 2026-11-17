@@ -5,7 +5,7 @@
 // Sections follow the address: #essays, #essays/new, #essays/<id>, #events…, #inbox, #newsletter, #text.
 
 import * as session from './session.js';
-import { markdown, splitTitle, toDate, lastDay } from '../cms.js';
+import { markdown, splitTitle, toDate, lastDay, PUBLISHED_SITE } from '../cms.js';
 import { fetchChanges, fetchEdits, setEdits, setImages, setDatesOff, isStored, isCurrent, sanitize, TEXT_DOC, TEXT_FIELD, IMAGE_FIELD, DATES_FIELD } from '../content.js';
 import { EARLIER, ORIGINALS } from './originals.js';
 
@@ -141,91 +141,7 @@ async function essays(id) {
       return `<li><a class="adm-row" href="#essays/${encodeURIComponent(p.id)}">
         <span><span class="adm-title">${esc(title)}${p.isPublished === false ? '<span class="adm-badge quiet">Draft</span>' : ''}</span><span class="adm-sub">${esc(sub || p.author || '')}</span></span>
         <span class="adm-meta">${esc(longDate(toDate(p.publishedAt)))}</span></a></li>`;
-    }).join('')}</ul>` : `<p class="adm-empty">No essays yet. Press “New essay” to write the first one.</p>
-    <h3 class="adm-group">Moving from the previous database</h3>
-    <p class="adm-hint">The site now keeps its essays, events and saved wording in a database of its own, which starts out empty. This copies them across from the previous one, each essay keeping its address. It can be pressed more than once: anything already here is left as it is.</p>
-    <div class="adm-actions"><button type="button" class="btn btn-ink sm" data-act="carry">Copy the essays, events and wording across</button><span class="adm-note" data-note role="status"></span></div>`}`;
-}
-
-/* ---------- bringing the content over from the previous database (done once) ---------- */
-
-// The foundation's earlier database. Its essays, events and saved wording can be read by anyone, which is
-// how the site showed them before. Nothing is ever written to it from here.
-const EARLIER_DB = 'https://firestore.googleapis.com/v1/projects/compassioncf-web-site/databases/(default)/documents';
-
-async function earlier(path) {
-  let res;
-  try {
-    res = await fetch(`${EARLIER_DB}/${path}`);
-  } catch {
-    throw new session.Fail('network', 'The previous database couldn’t be reached. Check the connection and try again.');
-  }
-  if (res.status === 404) return {};
-  if (!res.ok) throw new session.Fail('other', 'The previous database couldn’t be read. Try again in a moment.', `${path.split('?')[0]}: HTTP ${res.status}`);
-  return res.json();
-}
-
-// Every document of one of its lists, in the database's own notation, so each is copied exactly as it is.
-async function earlierDocs(collection) {
-  const out = [];
-  let pageToken = '';
-  do {
-    const page = await earlier(`${collection}?pageSize=300${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`);
-    (page.documents || []).forEach((d) => out.push({ id: d.name.split('/').pop(), fields: d.fields || {} }));
-    pageToken = page.nextPageToken || '';
-  } while (pageToken && out.length < 3000);
-  return out;
-}
-
-const jsonOf = (doc, field, fallback) => { try { return JSON.parse(doc.fields?.[field]?.stringValue) ?? fallback; } catch { return fallback; } };
-
-async function carryOver() {
-  const [oldPosts, oldEvents, oldHome, posts, evs, now] = await Promise.all([
-    earlierDocs('blogPosts'), earlierDocs('events'), earlier(`${TEXT_DOC}?mask.fieldPaths=${TEXT_FIELD}&mask.fieldPaths=${DATES_FIELD}`),
-    session.list('blogPosts'), session.list('events'), fetchChanges({ ownOnly: true }),   // what is really in the new database, not what the pages fall back to
-  ]);
-  const count = { essays: 0, events: 0, lines: 0 };
-
-  const havePosts = new Set(posts.map((p) => p.id));
-  for (const p of oldPosts) {
-    if (havePosts.has(p.id)) continue;
-    // An essay with no "published" mark was shown to everyone by the previous site, so it is marked published here.
-    await session.copyIn('blogPosts', p.id, 'isPublished' in p.fields ? p.fields : { ...p.fields, isPublished: { booleanValue: true } });
-    count.essays += 1;
-  }
-  const haveEvents = new Set(evs.map((e) => e.id));
-  for (const e of oldEvents) {
-    if (haveEvents.has(e.id) || !Object.keys(e.fields).length) continue;
-    await session.copyIn('events', e.id, e.fields);
-    count.events += 1;
-  }
-
-  // Saved wording: only changes the pages still use, and never over a change already saved here.
-  const oldText = jsonOf(oldHome, TEXT_FIELD, {});
-  const wording = { ...now.edits };
-  for (const [key, html] of Object.entries(oldText && typeof oldText === 'object' ? oldText : {})) {
-    if (!isCurrent(key) || key in wording || typeof html !== 'string') continue;
-    wording[key] = sanitize(html);
-    count.lines += 1;
-  }
-  const oldDates = jsonOf(oldHome, DATES_FIELD, []);
-  const dates = [...new Set([...now.datesOff, ...(Array.isArray(oldDates) ? oldDates.filter((n) => typeof n === 'string') : [])])];
-  const fields = {};
-  if (count.lines) fields[TEXT_FIELD] = JSON.stringify(wording);
-  if (dates.length !== now.datesOff.length) fields[DATES_FIELD] = JSON.stringify(dates);
-  if (Object.keys(fields).length) {
-    await session.setFields(TEXT_DOC, fields);
-    if (count.lines) setEdits(wording);
-    if (fields[DATES_FIELD]) setDatesOff(dates);
-  }
-
-  // The dates written into the News and Updates page become ordinary events as part of the move.
-  const moved = await moveDates().catch(() => 0);
-
-  const part = (n, one, many) => (n ? `${n} ${n === 1 ? one : many}` : '');
-  const said = [part(count.essays, 'essay', 'essays'), part(count.events, 'event', 'events'), part(count.lines, 'saved line of wording', 'saved lines of wording'), part(moved, 'date from the page', 'dates from the page')].filter(Boolean);
-  flash = said.length ? `Copied across: ${said.join(', ')}.` : 'Nothing to copy: everything from the previous database is already here.';
-  go('#essays');
+    }).join('')}</ul>` : '<p class="adm-empty">No essays yet. Press “New essay” to write the first one.</p>'}`;
 }
 
 async function essay(id) {
@@ -380,28 +296,22 @@ async function events(id) {
 // worst that could happen is a date showing twice, never a date lost, and the page already drops its own copy
 // of a date when an event has the same name. A date that is here already under the same name is not made again.
 async function takeDates() {
-  const n = await moveDates();
-  flash = n === 1 ? 'That date is an ordinary event now. Change or remove it like any other.' : 'Those dates are ordinary events now. Change or remove them like any other.';
-  go('#events');
-}
-
-// Does the moving, and says how many dates were moved.
-async function moveDates() {
   const [{ datesOff, dates: moving }, existing] = await Promise.all([datesStillInThePage(), session.list('events')]);
-  if (!moving.length) return 0;
   const have = new Set(existing.map((e) => String(e.title || '').trim().toLowerCase()));
   for (const d of moving) {
     if (have.has(d.title.toLowerCase())) continue;
     const now = new Date();
+    // The link is read by visitors of the published site, so it names that site, not wherever this editor is running.
     await session.create('events', {
-      title: d.title, location: '', description: `[Donate](${SITE}donate/)`,
+      title: d.title, location: '', description: `[Donate](${PUBLISHED_SITE}donate/)`,
       date: d.month ? `${d.day.slice(0, 7)}-01` : d.day, wholeMonth: d.month, createdAt: now, updatedAt: now,
     });
   }
   const next = [...new Set([...datesOff, ...moving.map((d) => d.name)])];
   await session.setField(TEXT_DOC, DATES_FIELD, JSON.stringify(next));
   setDatesOff(next);
-  return moving.length;
+  flash = moving.length === 1 ? 'That date is an ordinary event now. Change or remove it like any other.' : 'Those dates are ordinary events now. Change or remove them like any other.';
+  go('#events');
 }
 
 async function eventForm(id) {
@@ -661,7 +571,6 @@ root.addEventListener('click', (e) => {
   const act = e.target.closest('[data-act]')?.dataset.act;
   if (act === 'out') { dirty = false; session.signOut(); }
   if (act === 'google') onSignIn(e.target.closest('[data-act]'));
-  if (act === 'carry') attempt(e.target.closest('[data-act]'), carryOver);
   if (act === 'retry') route();
   if (act === 'copy') copyAddresses();
   if (act === 'csv') downloadAddresses();
