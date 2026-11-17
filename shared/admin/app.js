@@ -6,7 +6,7 @@
 
 import * as session from './session.js';
 import { markdown, splitTitle, toDate, lastDay, PUBLISHED_SITE } from '../cms.js';
-import { fetchChanges, fetchEdits, setEdits, setImages, setDatesOff, isStored, isCurrent, sanitize, TEXT_DOC, TEXT_FIELD, IMAGE_FIELD, DATES_FIELD } from '../content.js';
+import { fetchChanges, fetchEdits, setEdits, setImages, setDatesOff, isStored, hasPhoto, isGray, photoUrl, isCurrent, sanitize, TEXT_DOC, TEXT_FIELD, IMAGE_FIELD, DATES_FIELD } from '../content.js';
 import { EARLIER, ORIGINALS } from './originals.js';
 
 const root = document.querySelector('[data-admin-app]');
@@ -477,7 +477,7 @@ async function text() {
     ${takeFlash()}
     <div class="adm-head"><div><h2>Text and photos</h2>
       <p>${session.PHOTO_SWAPS
-    ? 'To change wording or a photo, open any page of the site and press <b>Edit this page</b> in the bar at the bottom. Click the text and type, or click a photo to choose another, then press Save.'
+    ? 'To change wording or a photo, open any page of the site and press <b>Edit this page</b> in the bar at the bottom. Click the text and type, or click a photo to put another in its place or to show it in grayscale, then press Save.'
     : 'To change wording, open any page of the site and press <b>Edit this page</b> in the bar at the bottom. Click the text and type, then press Save. Photos can’t be changed from here at the moment: send a new photo to the person who looks after the website.'}</p></div>
       <a class="btn btn-sun sm" href="${SITE}">Go to the site</a></div>
     <h3 class="adm-group">Wording changed</h3>
@@ -490,9 +490,14 @@ async function text() {
     </details>
     ${photos.length || session.PHOTO_SWAPS ? '<h3 class="adm-group">Photos changed</h3>' : ''}
     ${!photos.length && !session.PHOTO_SWAPS ? '' : photos.length ? `<ul class="adm-list">${photos.map((k) => `
-      <li class="adm-mail"><span class="adm-swap"><img class="was" src="${esc(originalPhoto(k))}" alt="The original photo" loading="lazy"> replaced by
-        <img src="${esc(images[k].src)}" alt="${esc(images[k].alt || 'The photo shown now')}" loading="lazy"></span>
-        <button type="button" class="adm-danger sm" data-undo-photo="${esc(k)}">Use the original photo</button></li>`).join('')}</ul>` : '<p class="adm-empty">None. Every page shows the photos it was built with.</p>'}`;
+      <li class="adm-mail"><span class="adm-swap"><img${hasPhoto(images[k]) ? ' class="was"' : ''} src="${esc(originalPhoto(k))}" alt="The original photo" loading="lazy">
+        ${hasPhoto(images[k]) ? `replaced by <img data-stored="${esc(k)}" alt="${esc(images[k].alt || 'The photo shown now')}">` : ''}
+        ${isGray(images[k]) ? '<span class="adm-badge quiet">Shown in grayscale</span>' : ''}</span>
+        <button type="button" class="adm-danger sm" data-undo-photo="${esc(k)}">${hasPhoto(images[k]) ? 'Use the original photo' : 'Show it as it is'}</button></li>`).join('')}</ul>` : '<p class="adm-empty">None. Every page shows the photos it was built with, as they are.</p>'}`;
+  // A photo put in place is read from the database, so its small picture arrives a moment after the list.
+  for (const img of view().querySelectorAll('img[data-stored]')) {
+    photoUrl(images[img.dataset.stored]).then((url) => { if (img.isConnected) img.src = url; }).catch(() => { img.alt = 'This photo couldn’t be loaded'; });
+  }
 }
 
 // Removes a saved change, so the line reads as the page itself is written.
@@ -516,12 +521,19 @@ async function useOriginal(key) {
   route();
 }
 
+// Puts a photo back to the one the page was built with, as it is. The record visitors' pages read is changed
+// first; the stored photo it named is removed after that.
 async function undoPhoto(key) {
-  const next = { ...(await fetchChanges()).images };
+  const now = (await fetchChanges()).images;
+  const was = now[key];
+  const next = { ...now };
   delete next[key];
   await session.setField(TEXT_DOC, IMAGE_FIELD, JSON.stringify(next));
   setImages(next);
-  flash = 'That photo is back to the original.';
+  if (hasPhoto(was) && !Object.values(next).some((swap) => hasPhoto(swap) && swap.id === was.id)) {
+    await session.removePhoto(was.id).catch((err) => console.warn('[editor] an unused photo was not removed:', err.detail || err.message));
+  }
+  flash = hasPhoto(was) ? 'That photo is back to the original.' : 'That photo is shown as it is again.';
   route();
 }
 

@@ -18,9 +18,9 @@ const STORE = 'ccf-editor';      // the signed-in session (shared/content.js loo
 const SETTINGS_STORE = 'ccf-editor-settings';
 const EDITOR_STORE = 'ccf-editor-ok';
 
-// Swapping photos needs somewhere to keep the new files. The site's own project has no file storage
-// (its plan does not include any), so the editor does not offer it for now.
-export const PHOTO_SWAPS = false;
+// Whether the editor offers to change photos. A photo put in place of one of the site's own is kept in
+// the database itself (see "photos" below): the site's project has no file storage on its plan.
+export const PHOTO_SWAPS = true;
 
 // kind: 'cancelled' | 'blocked' | 'network' | 'denied' | 'missing' | 'expired' | 'settings' | 'other'
 export class Fail extends Error {
@@ -313,11 +313,38 @@ export async function setFields(docPath, values) {
 }
 export const setField = (docPath, field, value) => setFields(docPath, { [field]: value });
 
-/* ---------- files ---------- */
+/* ---------- photos ---------- */
 
-export const PHOTO_FOLDER = 'site-photos';
+// A photo an editor puts in place of one of the site's own is kept as a document named "photo-…" in the
+// same list as the page-text record, which the database's rules already let editors write and anyone read.
+// A document can hold up to 1 MB; a photo sized for a web page is a fraction of that. Every visitor's first
+// look at such a photo is read from the database, so the editor keeps each one small (see bar.js).
+export const PHOTO_LIMIT = 600 * 1024;   // bytes: what the database is ever asked to keep for one photo
+const PHOTO_ID = /^photo-[a-z0-9]{10,40}$/;
+export const newPhotoId = () => `photo-${Date.now().toString(36)}${Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => (b % 36).toString(36)).join('')}`;
 
-// See PHOTO_SWAPS above: there is nowhere to put a new photo yet.
-export async function upload() {
-  throw new Fail('other', 'Photos can’t be changed from the editor at the moment.');
+const base64 = (blob) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+  reader.onerror = () => reject(new Fail('other', 'That photo couldn’t be read. Try choosing it again.'));
+  reader.readAsDataURL(blob);
+});
+
+export async function savePhoto(id, blob, about = {}) {
+  if (!PHOTO_ID.test(id)) throw new Fail('other', 'That photo couldn’t be saved.', `not a photo name: ${id}`);
+  if (!/^image\/(jpeg|png|webp)$/.test(blob.type)) throw new Fail('other', 'That file isn’t a kind of photo the site can show.');
+  if (!blob.size || blob.size > PHOTO_LIMIT) throw new Fail('other', 'That photo is still too large after shrinking. Try a smaller or simpler picture.');
+  const fields = {
+    data: { bytesValue: await base64(blob) },
+    type: { stringValue: blob.type },
+    ...encodeFields({ photoOf: String(about.key || ''), width: Math.round(about.width || 0), height: Math.round(about.height || 0), savedAt: new Date() }),
+  };
+  const mask = Object.keys(fields).map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
+  await call(`content/${id}`, { method: 'PATCH', query: mask, body: { fields } });
+}
+
+// Removes a stored photo that no saved change names any more. Only ever a "photo-…" document.
+export async function removePhoto(id) {
+  if (!PHOTO_ID.test(id)) return;
+  await call(`content/${id}`, { method: 'DELETE' });
 }

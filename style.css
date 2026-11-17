@@ -389,8 +389,8 @@ em { font-style: italic; }
 .members { display: grid; gap: clamp(80px, 10vw, 120px); }
 .member { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: clamp(36px, 6vw, 84px); align-items: start; }
 .portrait { position: sticky; top: 108px; padding: 7px; border-radius: 999px 999px 30px 30px; background: linear-gradient(160deg, var(--gold), var(--amber) 45%, var(--rose)); box-shadow: 0 40px 70px -40px rgba(120, 60, 40, .6); }
-/* every portrait is shown in black and white, whatever the photo file is, so the board looks like one set */
-.portrait img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; object-position: center 22%; border-radius: 999px 999px 24px 24px; background: #e9dccb; filter: grayscale(1); }
+/* the board's portraits are black-and-white files. A photo an editor puts in a portrait's place is shown as it is, unless they switch Grayscale on for it (shared/content.js) */
+.portrait img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; object-position: center 22%; border-radius: 999px 999px 24px 24px; background: #e9dccb; }
 .member .kicker { margin-bottom: 10px; }
 .member h2 { font: 400 clamp(38px, 4.2vw, 56px)/1.04 var(--serif); color: var(--ink); letter-spacing: -.02em; margin-bottom: 24px; }
 .member p:not(.kicker) { font-size: 18px; line-height: 1.75; color: #4b4562; margin-bottom: 16px; max-width: 40em; }

@@ -1,15 +1,15 @@
 // The editor bar a signed-in editor sees at the bottom of every page, and "Edit this page":
-// click any text and change it, click any photo and swap it, save. Loaded by shared/content.js only
-// when this browser has signed in.
+// click any text and change it, click any photo to put another in its place or show it in
+// grayscale, save. Loaded by shared/content.js only when this browser has signed in.
 
 import {
   entries, sanitize, normalize, fetchChanges, setEdits, edits, TEXT_DOC, TEXT_FIELD,
-  imageEntries as photosOnThePage, images, setImages, applyImages, isStored, describe, show, IMAGE_FIELD,
+  imageEntries as photosOnThePage, images, setImages, applyImages, isStored, hasPhoto, isGray, paint, keepPhoto, IMAGE_FIELD,
 } from '../content.js';
 import * as session from './session.js';
 import { ORIGINALS } from './originals.js';
 
-// The photos an editor may swap. None while the site has nowhere to keep a new file (see PHOTO_SWAPS in session.js).
+// The photos an editor may change (see PHOTO_SWAPS in session.js).
 const imageEntries = session.PHOTO_SWAPS ? photosOnThePage : [];
 
 const ADMIN = new URL('../../admin/', import.meta.url).href;
@@ -33,15 +33,22 @@ pop.textContent = 'Use the original wording';
 pop.hidden = true;
 document.body.append(pop);
 
-// The small panel that opens on a photo that has been swapped: describe it, pick another, or go back.
+// The small panel that opens on a photo: put another in its place, show it in grayscale (a switch that is
+// off unless turned on), describe a photo that was put in place, or go back to the page's own.
 const photo = document.createElement('div');
 photo.className = 'ed-photo';
 photo.hidden = true;
 photo.innerHTML = `
-  <label for="ed-photo-alt">Describe this photo <small>read aloud to people who can’t see it</small></label>
-  <input id="ed-photo-alt" type="text" maxlength="180" autocomplete="off" data-photo="alt">
+  <div class="ed-photo-gray">
+    <span id="ed-photo-gray-h">Grayscale <small>black and white</small></span>
+    <button type="button" class="ed-switch" role="switch" aria-checked="false" aria-labelledby="ed-photo-gray-h" data-photo="gray"><span></span></button>
+  </div>
+  <div class="ed-photo-desc" data-photo-desc>
+    <label for="ed-photo-alt">Describe this photo <small>read aloud to people who can’t see it</small></label>
+    <input id="ed-photo-alt" type="text" maxlength="180" autocomplete="off" data-photo="alt">
+  </div>
   <div class="ed-photo-acts">
-    <button type="button" data-photo="pick">Choose another photo</button>
+    <button type="button" data-photo="pick">Choose a photo</button>
     <button type="button" data-photo="orig">Use the original photo</button>
     <button type="button" class="ed-photo-done" data-photo="done">Done</button>
   </div>`;
@@ -52,7 +59,7 @@ chooser.setAttribute('data-ed-file', '');
 document.body.append(chooser);
 
 let editing = false;
-let round = 0;        // counts editing sessions, so a late upload can't land in a later one
+let round = 0;        // counts editing sessions, so a photo that takes a while to prepare can't land in a later one
 let busy = false;
 let note = '';        // one line of feedback shown in the bar
 let noteKind = '';
@@ -71,27 +78,36 @@ const first = (entry) => (hasEarlier(entry) ? sanitize(ORIGINALS[entry.key]) : e
 const isOriginal = (entry) => clean(entry.el.innerHTML) === clean(first(entry));
 const changes = () => entries.filter(isChanged);
 
-const picked = new Map();   // which photo -> { src, alt, preview } chosen while editing, or null for "back to the original"
-const sending = new Map();  // which photo -> a local preview, while its file is on the way to the storage
-const tags = new Map();     // each photo on the page -> its "Change photo" label, while editing
-let photoOf = null;         // the photo whose panel is open
+// What the editor has chosen for a photo while editing, by which photo it is:
+//   { blob, preview, width, height, alt, gray }   a new photo, prepared and waiting for Save
+//   { id, v, alt, gray }                            the stored photo already in its place, perhaps redescribed or switched to grayscale
+//   { gray: true }                                  the page's own photo, shown in grayscale
+//   null                                            back to the page's own photo, as it is
+const picked = new Map();
+const preparing = new Set();  // photos whose new file is being read and shrunk
+const tags = new Map();       // each photo on the page -> its "Change photo" label, while editing
+let photoOf = null;           // the photo whose panel is open
 let choosingFor = null;
 
+const replaced = (swap) => !!swap && (!!swap.blob || hasPhoto(swap));   // another photo stands in the original's place
+const plain = (swap) => !replaced(swap) && !isGray(swap);                // the page's own photo, as it is
 const savedSwap = (key) => (isStored(images[key]) ? images[key] : null);            // what visitors see now
 const currentSwap = (key) => (picked.has(key) ? picked.get(key) : savedSwap(key));  // what the editor sees now
-const sameSwap = (a, b) => (!a || !b ? !a && !b : a.src === b.src && (a.alt || '') === (b.alt || ''));
+const sameSwap = (a, b) => (plain(a) || plain(b) ? plain(a) && plain(b)
+  : !a.blob && !b.blob && (a.id || '') === (b.id || '') && String(a.v ?? '') === String(b.v ?? '') && isGray(a) === isGray(b)
+    && (!replaced(a) || (a.alt || '').trim() === (b.alt || '').trim()));
 const photoChanges = () => [...picked.keys()].filter((key) => !sameSwap(picked.get(key), savedSwap(key)));
 
 function paintPhotos() {
   const changed = new Set(editing ? photoChanges() : []);
   for (const entry of imageEntries) {
     const swap = currentSwap(entry.key);
-    show(entry, sending.get(entry.key) || (swap ? swap.preview || swap.src : entry.src), describe(entry, swap));
+    paint(entry, plain(swap) ? null : swap, (swap && swap.preview) || '');
     entry.el.classList.toggle('ed-changed', changed.has(entry.key));
-    entry.el.classList.toggle('ed-busy', sending.has(entry.key));
+    entry.el.classList.toggle('ed-busy', preparing.has(entry.key));
     const tag = tags.get(entry);
     if (tag) {
-      tag.textContent = sending.has(entry.key) ? 'Uploading…' : changed.has(entry.key) ? 'Photo changed' : 'Change photo';
+      tag.textContent = preparing.has(entry.key) ? 'Preparing…' : changed.has(entry.key) ? 'Photo changed' : 'Change photo';
       tag.classList.toggle('changed', changed.has(entry.key));
     }
   }
@@ -129,11 +145,11 @@ function render() {
   if (!who) { bar.remove(); pop.remove(); photo.remove(); return; }
   const n = editing ? changes().length + photoChanges().length : 0;
   const hint = imageEntries.length ? 'Click any text or photo on the page to change it.' : 'Click any text on the page to change it.';
-  const status = note ? `<b class="${noteKind}">${esc(note)}</b>` : sending.size ? 'Uploading the photo…' : n ? `${n} change${n === 1 ? '' : 's'} not saved yet` : hint;
+  const status = note ? `<b class="${noteKind}">${esc(note)}</b>` : preparing.size ? 'Preparing the photo…' : n ? `${n} change${n === 1 ? '' : 's'} not saved yet` : hint;
   bar.classList.toggle('editing', editing);
   bar.innerHTML = editing
     ? `<span class="edbar-msg">${status}</span>
-       <button type="button" class="edbar-main" data-ed="save" ${!n || busy || sending.size ? 'disabled' : ''}>${busy ? 'Saving…' : 'Save'}</button>
+       <button type="button" class="edbar-main" data-ed="save" ${!n || busy || preparing.size ? 'disabled' : ''}>${busy ? 'Saving…' : 'Save'}</button>
        <button type="button" data-ed="cancel" ${busy ? 'disabled' : ''}>Cancel</button>`
     : `<span class="edbar-msg">${note ? `<b class="${noteKind}">${esc(note)}</b>` : `Editor: <b>${esc(who.email)}</b>`}</span>
        <button type="button" class="edbar-main" data-ed="edit">Edit this page</button>
@@ -195,7 +211,7 @@ function stop() {
 function cancel() {
   for (const entry of entries) if (isChanged(entry)) entry.el.innerHTML = shown(entry);
   stop();
-  sending.clear();
+  preparing.clear();
   forgetPicked();
   applyImages(images);   // back to what visitors see
   note = '';
@@ -227,7 +243,7 @@ function placePop() {
 }
 
 async function save() {
-  if (busy || sending.size) return;
+  if (busy || preparing.size) return;
   busy = true;
   note = '';
   render();
@@ -242,16 +258,32 @@ async function save() {
     }
     if (textChanges.length) fields[TEXT_FIELD] = JSON.stringify(nextEdits);
 
+    // Photos. A new photo is stored first, under a name of its own, and only then named in the record
+    // visitors' pages read, so that record never names a photo that isn't there.
     const nextImages = { ...now.images };
     const swapped = photoChanges();
+    const stored = [];   // new photos, to keep in this browser once everything is saved
     for (const key of swapped) {
-      const swap = picked.get(key);
-      if (swap) nextImages[key] = { src: swap.src, ...(swap.alt && swap.alt.trim() ? { alt: swap.alt.trim() } : {}) };
-      else delete nextImages[key];
+      const choice = picked.get(key);
+      if (plain(choice)) { delete nextImages[key]; continue; }
+      let named = hasPhoto(choice) ? { id: choice.id, v: String(choice.v ?? '') } : null;
+      if (choice.blob) {
+        named = { id: session.newPhotoId(), v: Date.now().toString(36) };
+        await session.savePhoto(named.id, choice.blob, { key, width: choice.width, height: choice.height });
+        stored.push([named, choice.blob]);
+      }
+      const alt = (choice.alt || '').trim();
+      nextImages[key] = { ...(named || {}), ...(named && alt ? { alt } : {}), ...(isGray(choice) ? { gray: true } : {}) };
     }
     if (swapped.length) fields[IMAGE_FIELD] = JSON.stringify(nextImages);
 
     if (Object.keys(fields).length) await session.setFields(TEXT_DOC, fields);
+    for (const [named, blob] of stored) await keepPhoto(named, blob);
+    // Stored photos that no saved change names any more are removed, once the record no longer points at them.
+    const still = new Set(Object.values(nextImages).filter(hasPhoto).map((swap) => swap.id));
+    for (const swap of Object.values(now.images)) {
+      if (hasPhoto(swap) && !still.has(swap.id)) session.removePhoto(swap.id).catch((err) => console.warn('[editor] an unused photo was not removed:', err.detail || err.message));
+    }
     stop();
     setEdits(nextEdits);
     setImages(nextImages);
@@ -267,11 +299,27 @@ async function save() {
 
 /* ---------- photos ---------- */
 
-const MAX_SIDE = 2000;   // pixels on the longer side: plenty for a full-width photo, and a fraction of a camera file
+const LONG_SIDE = 1600;           // pixels on the longer side: enough for a photo across the page on a sharp screen
+const PHOTO_BYTES = 300 * 1024;   // what one photo should weigh at most: each visitor's first look at it is read from the database
 
-// Every photo is redrawn as a JPEG of a sensible size before it leaves the browser. That keeps pages
-// fast, and drops what cameras write into the file (where and when it was taken).
-async function shrink(file) {
+// The shape of the photo in a place (width over height): that of the file the page was built with.
+const shapeOf = (entry) => new Promise((resolve) => {
+  if (entry.shape) { resolve(entry.shape); return; }
+  const probe = new Image();
+  probe.onload = () => {
+    entry.shape = probe.naturalWidth && probe.naturalHeight ? probe.naturalWidth / probe.naturalHeight : 0;
+    resolve(entry.shape);
+  };
+  probe.onerror = () => resolve(0);
+  probe.src = new URL(entry.src, document.baseURI).href;
+});
+
+const asJpeg = (canvas, quality) => new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+
+// Every new photo is redrawn before it is kept: cut to the shape of the photo it replaces (so nothing around
+// it moves), sized for the page, and saved as a JPEG light enough for the database. Redrawing also drops what
+// cameras write into a file (where and when it was taken).
+async function prepare(file, entry) {
   if (!file.type.startsWith('image/')) throw new Error('That file isn’t a picture. Choose a JPEG or PNG photo.');
   if (file.size > 40 * 1024 * 1024) throw new Error('That photo is over 40 MB. Choose a smaller file.');
   let picture;
@@ -280,30 +328,41 @@ async function shrink(file) {
   } catch {
     throw new Error('That file couldn’t be read as a photo. Try a JPEG or PNG.');
   }
-  const scale = Math.min(1, MAX_SIDE / Math.max(picture.width, picture.height));
+  const shape = (await shapeOf(entry)) || picture.width / picture.height;
+  // The part of the new photo that is kept: as much of it as fits the shape, placed the way the page places
+  // a photo that is too wide or too tall for its frame (a portrait keeps its top).
+  const place = getComputedStyle(entry.el).objectPosition.split(' ').map((p) => (p.endsWith('%') ? parseFloat(p) / 100 : 0.5));
+  const ax = Number.isFinite(place[0]) ? place[0] : 0.5;
+  const ay = Number.isFinite(place[1]) ? place[1] : 0.5;
+  let sw = picture.width;
+  let sh = picture.height;
+  if (sw / sh > shape) sw = Math.round(sh * shape); else sh = Math.round(sw / shape);
+  const sx = Math.round((picture.width - sw) * ax);
+  const sy = Math.round((picture.height - sh) * ay);
+  // Twice the width it is shown at (for sharp screens), within sensible bounds, and never more than the photo has.
+  let width = Math.max(2 * (entry.el.getBoundingClientRect().width || 0), shape >= 1 ? 1200 : 600);
+  width = Math.min(width, sw, shape >= 1 ? LONG_SIDE : LONG_SIDE * shape);
   const canvas = document.createElement('canvas');
-  canvas.width = Math.max(1, Math.round(picture.width * scale));
-  canvas.height = Math.max(1, Math.round(picture.height * scale));
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#fff';   // behind a picture with see-through parts
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(picture, 0, 0, canvas.width, canvas.height);
+  let blob = null;
+  for (let attempt = 0; attempt < 6 && !(blob && blob.size <= PHOTO_BYTES); attempt++) {
+    canvas.width = Math.max(1, Math.round(width));
+    canvas.height = Math.max(1, Math.round(width / shape));
+    ctx.fillStyle = '#fff';   // behind a picture with see-through parts
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(picture, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    for (const quality of [0.84, 0.74, 0.64]) {
+      blob = await asJpeg(canvas, quality);
+      if (blob && blob.size <= PHOTO_BYTES) break;
+    }
+    width *= 0.82;   // if it is still too heavy, the next try is a little smaller
+  }
   if (picture.close) picture.close();
-  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.86));
   if (!blob) throw new Error('That photo couldn’t be prepared. Try a different file.');
-  return blob;
+  if (blob.size > session.PHOTO_LIMIT) throw new Error('That photo is still too large after shrinking. Try a simpler picture.');
+  return { blob, width: canvas.width, height: canvas.height };
 }
-
-const fileSlug = (name) => name.replace(/\.[^.]+$/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'photo';
-
-// Does this address show a picture to someone who isn't signed in? Asked before a swap is accepted,
-// so a photo visitors couldn't see is never saved onto a page.
-const opens = (src) => new Promise((resolve) => {
-  const probe = new Image();
-  probe.onload = () => resolve(probe.naturalWidth > 0);
-  probe.onerror = () => resolve(false);
-  probe.src = src;
-});
 
 function choose(entry) {
   choosingFor = entry;
@@ -315,47 +374,49 @@ chooser.addEventListener('change', async () => {
   const entry = choosingFor;
   const file = chooser.files && chooser.files[0];
   if (!entry || !file || !editing) return;
-  closePhoto();
-  let blob;
-  try {
-    blob = await shrink(file);
-  } catch (err) {
-    say(err.message, 'bad');
-    return;
-  }
-  if (!editing) return;
   const mine = round;
-  const preview = URL.createObjectURL(blob);
-  sending.set(entry.key, preview);
+  preparing.add(entry.key);
   note = '';
   mark();
   try {
-    const src = await session.upload(`${session.PHOTO_FOLDER}/site-${Date.now()}-${fileSlug(file.name)}.jpg`, blob);
-    if (!(await opens(src))) throw new session.Fail('other', 'It was uploaded, but its address doesn’t open for visitors.', src);
-    if (!editing || round !== mine) return;   // cancelled while the file was on its way
+    const made = await prepare(file, entry);
+    if (!editing || round !== mine) return;   // cancelled while the photo was being prepared
     const before = currentSwap(entry.key);
-    sending.delete(entry.key);
-    picked.set(entry.key, { src, alt: (before && before.alt) || entry.alt, preview });
+    if (before && before.preview) setTimeout(() => URL.revokeObjectURL(before.preview), 30000);
+    preparing.delete(entry.key);
+    // A new photo starts as it is: grayscale is something to switch on, never carried over.
+    picked.set(entry.key, { ...made, preview: URL.createObjectURL(made.blob), alt: (replaced(before) && before.alt) || entry.alt, gray: false });
     mark();
     openPhoto(entry, true);
   } catch (err) {
-    URL.revokeObjectURL(preview);
-    console.warn('[editor] photo not uploaded:', err.detail || err.message);
+    console.warn('[editor] photo not prepared:', err.message);
     if (!editing || round !== mine) return;
-    sending.delete(entry.key);
+    preparing.delete(entry.key);
     mark();
     say(`The photo wasn’t changed. ${err.message}`, 'bad');
   }
 });
 
+// Sets the panel's switches and buttons to match the photo it is open on.
+function syncPhoto() {
+  if (!photoOf) return;
+  const swap = currentSwap(photoOf.key);
+  photo.querySelector('[data-photo="gray"]').setAttribute('aria-checked', String(isGray(swap)));
+  // A description goes with a photo put in the original's place, and only where the original has one.
+  photo.querySelector('[data-photo-desc]').hidden = !(replaced(swap) && photoOf.alt);
+  photo.querySelector('[data-photo="pick"]').textContent = replaced(swap) ? 'Choose another photo' : 'Choose a photo';
+  photo.querySelector('[data-photo="orig"]').hidden = !replaced(swap);   // grayscale alone is undone with its own switch
+}
+
 function openPhoto(entry, focus = false) {
   photoOf = entry;
   const swap = currentSwap(entry.key);
   const input = photo.querySelector('[data-photo="alt"]');
-  input.value = (swap && swap.alt) || entry.alt;
+  input.value = (replaced(swap) && swap.alt) || entry.alt;
+  syncPhoto();
   photo.hidden = false;
   placePhoto();
-  if (focus) { input.focus({ preventScroll: true }); input.select(); }
+  if (focus && !photo.querySelector('[data-photo-desc]').hidden) { input.focus({ preventScroll: true }); input.select(); }
 }
 
 function closePhoto() {
@@ -363,25 +424,46 @@ function closePhoto() {
   photo.hidden = true;
 }
 
+// The panel goes where it does not cover the photo it changes, so the photo can be seen while Grayscale is
+// switched: beside the photo if the window has room, else under it. Only a photo too large for either
+// gets the panel over one of its lower corners.
 function placePhoto() {
   if (!editing || !photoOf) { photo.hidden = true; return; }
   const r = photoOf.el.getBoundingClientRect();
-  // inside the photo's top left corner, kept on screen and below the site header
-  const top = Math.min(Math.max(r.top, 72), Math.max(r.bottom - 60, r.top)) + 12;
-  const left = Math.min(Math.max(r.left + 12, 8), document.documentElement.clientWidth - photo.offsetWidth - 8);
+  const w = photo.offsetWidth;
+  const h = photo.offsetHeight;
+  const wide = document.documentElement.clientWidth;
+  const tall = window.innerHeight;
+  const gap = 12;
+  const edge = 8;
+  const below = 72;      // the site's header
+  const above = 84;      // the editor's bar at the bottom of the window
+  const beside = Math.min(Math.max(r.top, below), Math.max(below, tall - above - h));
+  let left;
+  let top;
+  if (r.right + gap + w <= wide - edge) { left = r.right + gap; top = beside; }
+  else if (r.left - gap - w >= edge) { left = r.left - gap - w; top = beside; }
+  else if (r.bottom + gap + h <= tall - above || r.height < tall / 2) { left = Math.min(Math.max(r.left, edge), wide - w - edge); top = r.bottom + gap; }
+  else { left = Math.min(Math.max(r.left + gap, edge), wide - w - edge); top = Math.max(below, Math.min(r.bottom, tall - above) - h - gap); }
   photo.style.top = `${top + scrollY}px`;
-  photo.style.left = `${Math.max(8, left) + scrollX}px`;
+  photo.style.left = `${Math.max(edge, left) + scrollX}px`;
 }
 
 function onPhoto(entry) {
-  if (!entry || sending.has(entry.key)) return;
-  if (currentSwap(entry.key)) openPhoto(entry);   // already swapped: describe it, pick another, or go back
-  else choose(entry);
+  if (!entry || preparing.has(entry.key)) return;
+  openPhoto(entry);
 }
 
 photo.addEventListener('click', (e) => {
+  if (!photoOf) return;
   const action = e.target.closest('[data-photo]')?.dataset.photo;
-  if (!photoOf || !action) return;
+  if (action === 'gray') {
+    const swap = currentSwap(photoOf.key);
+    picked.set(photoOf.key, { ...(swap || {}), gray: !isGray(swap) });
+    mark();
+    syncPhoto();
+    return;
+  }
   if (action === 'pick') choose(photoOf);
   if (action === 'orig') { picked.set(photoOf.key, null); closePhoto(); mark(); }
   if (action === 'done') closePhoto();
@@ -389,7 +471,7 @@ photo.addEventListener('click', (e) => {
 photo.addEventListener('input', (e) => {
   if (!photoOf || e.target.dataset.photo !== 'alt') return;
   const swap = currentSwap(photoOf.key);
-  if (!swap) return;
+  if (!replaced(swap)) return;
   picked.set(photoOf.key, { ...swap, alt: e.target.value });
   mark();
 });
@@ -453,7 +535,7 @@ document.addEventListener('click', (e) => {
   if (photoOf) closePhoto();
   if (e.target.closest('a, button, [data-donate], summary')) { e.preventDefault(); e.stopPropagation(); }
 }, true);
-window.addEventListener('beforeunload', (e) => { if (editing && (changes().length || photoChanges().length || sending.size)) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('beforeunload', (e) => { if (editing && (changes().length || photoChanges().length || preparing.size)) { e.preventDefault(); e.returnValue = ''; } });
 window.addEventListener('scroll', () => { placePop(); placePhoto(); }, { passive: true });
 window.addEventListener('resize', () => { placePop(); placeTags(); placePhoto(); });
 document.addEventListener('load', (e) => { if (editing && e.target.tagName === 'IMG') placeTags(); }, true);   // a photo arriving can move the ones below it

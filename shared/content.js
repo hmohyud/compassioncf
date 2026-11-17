@@ -10,18 +10,19 @@
 // Only simple inline markup survives (emphasis, links, line breaks). Everything else is stripped, when an
 // edit is saved and again here before it is shown, so the stored text can never inject anything else.
 //
-// Photos work the same way: { "<which photo>": { "src": "<address of the new file>", "alt": "<description>" } }.
-// A photo is known by where its file lives, so one photo used on several pages is swapped on all of them.
-// A new file is only ever shown if it is in the foundation's own file storage.
+// Photos work the same way: { "<which photo>": { "id": "<stored photo>", "v": "<its version>", "alt": "<description>",
+// "gray": true } }. A photo is known by where its file lives, so one photo used on several pages is changed on
+// all of them. An editor can put another photo in its place (id), show it in grayscale (gray), or both. A photo
+// put in place is kept in the site's own database and is only ever read from there: a saved change names it,
+// and never carries an address.
 //
 // The editor's own code (shared/admin/) is loaded only in a browser that has signed in.
 
 const DB = 'https://firestore.googleapis.com/v1/projects/compassioncf-editor/databases/(default)/documents';   // the site's own database
 export const TEXT_DOC = 'content/home';   // one document: anyone may read it, only editors may write it
 export const TEXT_FIELD = 'siteText';     // one string field holding the JSON object of text edits
-export const IMAGE_FIELD = 'siteImages';  // another, holding the JSON object of swapped photos
+export const IMAGE_FIELD = 'siteImages';  // another, holding the JSON object of changed photos
 export const DATES_FIELD = 'siteDatesOff'; // a third: a JSON list naming the dates written into a page that an editor has moved into the Events list
-export const STORAGE = 'https://firebasestorage.googleapis.com/v0/b/compassioncf-web-site.firebasestorage.app/o/';
 const CACHE = 'ccf-text';                 // last known changes, so returning visitors don't see the old page first
 const IMAGE_CACHE = 'ccf-images';
 const DATES_CACHE = 'ccf-dates';
@@ -156,28 +157,110 @@ export function imageKey(src) {
   return url.origin === ROOT.origin && url.pathname.startsWith(ROOT.pathname) ? url.pathname.slice(ROOT.pathname.length) : url.href;
 }
 
-// Every photo on this page that can be swapped, with the file and description it has in the page's own HTML.
+// Every photo on this page that can be changed, with the file and description it has in the page's own HTML.
 export const imageEntries = [...document.querySelectorAll('main img[src]')]
   .filter((el) => !el.closest(IMAGE_SKIP))
-  .map((el) => ({ el, key: imageKey(el.getAttribute('src')), src: el.getAttribute('src'), alt: el.getAttribute('alt') || '', edited: false }));
+  .map((el) => ({ el, key: imageKey(el.getAttribute('src')), src: el.getAttribute('src'), alt: el.getAttribute('alt') || '', edited: false, want: '' }));
 
-// A swap counts only if its file is in the foundation's storage; anything else in the database is ignored.
-export const isStored = (swap) => !!swap && typeof swap.src === 'string' && swap.src.startsWith(STORAGE);
+// A photo put in place of one of the site's own is a document named "photo-…" in the site's database, beside the
+// page-text record. A saved change can only name such a document; it is never an address, so nothing from
+// anywhere else can be shown.
+const PHOTO_ID = /^photo-[a-z0-9]{10,40}$/;
+const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+export const hasPhoto = (swap) => !!swap && typeof swap === 'object' && typeof swap.id === 'string' && PHOTO_ID.test(swap.id);
+export const isGray = (swap) => !!swap && typeof swap === 'object' && swap.gray === true;
+// A saved change counts if it names a stored photo, asks for grayscale, or both; anything else in the database is ignored.
+export const isStored = (swap) => hasPhoto(swap) || isGray(swap);
 
 // A photo with no description in the page is decoration there (its caption is beside it), and stays that way.
-export const describe = (entry, swap) => (entry.alt && swap && typeof swap.alt === 'string' && swap.alt.trim() ? swap.alt.trim() : entry.alt);
+// A description saved with a change is used only when another photo stands in the original's place.
+export const describe = (entry, swap, replaced = hasPhoto(swap)) => (entry.alt && replaced && swap && typeof swap.alt === 'string' && swap.alt.trim() ? swap.alt.trim() : entry.alt);
 
 export function show(entry, src, alt) {
   if (entry.el.getAttribute('src') !== src) entry.el.setAttribute('src', src);
   if ((entry.el.getAttribute('alt') || '') !== alt) entry.el.setAttribute('alt', alt);
 }
 
+// Grayscale is laid over the picture as it is drawn: the file is not altered, so switching it off again
+// shows the photo as it is. Anything the page's own style does to the picture stays in place.
+export function setGray(el, on) {
+  if ((el.dataset.gray === '1') === on) return;
+  el.style.filter = '';
+  delete el.dataset.gray;
+  if (!on) return;
+  const own = getComputedStyle(el).filter;
+  if (!/grayscale/.test(own)) el.style.filter = `${own && own !== 'none' ? `${own} ` : ''}grayscale(1)`;
+  el.dataset.gray = '1';
+}
+
+// A stored photo is fetched from the database once and then kept by the browser under its name and version,
+// so it is read again only when an editor has changed it.
+const photoUrls = new Map();   // "<photo>@<version>" -> a promise of an address this page can show
+export const photoName = (swap) => `${swap.id}@${String(swap.v ?? '').replace(/[^\w-]/g, '').slice(0, 24)}`;
+const keptAs = (name) => new URL(`shared/kept-photo/${name}`, ROOT).href;   // never requested: only the name the browser keeps it under
+const photoShelf = async () => { try { return await caches.open('ccf-photos'); } catch { return null; } };   // not offered in every browser mode
+
+async function loadPhoto(swap) {
+  const name = photoName(swap);
+  const shelf = await photoShelf();
+  let kept = null;
+  try { kept = shelf && await shelf.match(keptAs(name)); } catch { /* read it from the database instead */ }
+  if (kept) return URL.createObjectURL(await kept.blob());
+  const res = await fetch(`${DB}/content/${swap.id}?mask.fieldPaths=data&mask.fieldPaths=type`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const doc = await res.json();
+  const type = doc.fields?.type?.stringValue;
+  const data = doc.fields?.data?.bytesValue;
+  if (!PHOTO_TYPES.includes(type) || typeof data !== 'string' || !data) throw new Error('not a photo');
+  const raw = atob(data);
+  const bytes = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+  const blob = new Blob([bytes], { type });
+  try { if (shelf) await shelf.put(keptAs(name), new Response(blob, { headers: { 'Content-Type': type } })); } catch { /* shown all the same */ }
+  return URL.createObjectURL(blob);
+}
+
+export function photoUrl(swap) {
+  const name = photoName(swap);
+  if (!photoUrls.has(name)) photoUrls.set(name, loadPhoto(swap).catch((err) => { photoUrls.delete(name); throw err; }));
+  return photoUrls.get(name);
+}
+
+// Used by the editor right after it has stored a photo: this browser has it already.
+export async function keepPhoto(swap, blob) {
+  const name = photoName(swap);
+  photoUrls.set(name, Promise.resolve(URL.createObjectURL(blob)));
+  const shelf = await photoShelf();
+  try { if (shelf) await shelf.put(keptAs(name), new Response(blob, { headers: { 'Content-Type': blob.type } })); } catch { /* it will be fetched when needed */ }
+}
+
+// Forgets the photos this browser keeps that no saved change names any more.
+async function tidyPhotos(swaps) {
+  const shelf = await photoShelf();
+  if (!shelf) return;
+  const named = new Set(Object.values(swaps).filter(hasPhoto).map((swap) => keptAs(photoName(swap))));
+  try { for (const req of await shelf.keys()) if (!named.has(req.url)) await shelf.delete(req); } catch { /* nothing depends on it */ }
+}
+
+// Shows one photo as a saved change (or the editor's choice, with its preview) says: which picture, in
+// grayscale or not, and its description. `swap` is null for a photo left as the page was built.
+export function paint(entry, swap, preview = '') {
+  const stored = !preview && hasPhoto(swap);
+  const want = preview || (stored ? photoName(swap) : '');
+  entry.want = want;   // so a photo that arrives late can't replace a newer choice
+  entry.edited = !!preview || isStored(swap);
+  setGray(entry.el, isGray(swap));
+  if (!stored) { show(entry, preview || entry.src, describe(entry, swap, !!preview)); return; }
+  photoUrl(swap)
+    .then((url) => { if (entry.want === want) show(entry, url, describe(entry, swap)); })
+    .catch((err) => {
+      console.warn('[content] photo not loaded:', err.message);
+      if (entry.want === want) show(entry, entry.src, entry.alt);
+    });
+}
+
 export function applyImages(swaps = {}) {
-  for (const entry of imageEntries) {
-    const swap = isStored(swaps[entry.key]) ? swaps[entry.key] : null;
-    show(entry, swap ? swap.src : entry.src, describe(entry, swap));
-    entry.edited = !!swap;
-  }
+  for (const entry of imageEntries) paint(entry, isStored(swaps[entry.key]) ? swaps[entry.key] : null);
 }
 
 /* ---------- reading what editors have saved ---------- */
@@ -238,7 +321,13 @@ export function setDatesOff(next) {
 }
 
 export const ready = fetchChanges()
-  .then((now) => { setEdits(now.edits); setImages(now.images); setDatesOff(now.datesOff); })
+  .then((now) => {
+    const hadPhotos = Object.values(images).some(hasPhoto);
+    setEdits(now.edits);
+    setImages(now.images);
+    setDatesOff(now.datesOff);
+    if (hadPhotos || Object.values(now.images).some(hasPhoto)) tidyPhotos(now.images);
+  })
   .catch((err) => console.warn('[content] changes not loaded:', err.message));
 
 /* ---------- the editor, for a signed-in browser only ---------- */
