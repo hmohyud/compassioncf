@@ -10,7 +10,8 @@ Pages written by this script start with a "Built by" comment. Change them here a
 script; edits made in those .html files are overwritten by the next run.
 
 The home page (index.html) is written by hand. This script only replaces its <header>, its
-<footer> and its program cards (between the "program cards" comments), so they match the other pages.
+<footer>, its program cards (between the "program cards" comments) and The Promise of Needs Awareness
+(between the "needs awareness" comments), so they match the other pages.
 """
 import math, os, re, sys
 
@@ -427,6 +428,23 @@ programs_body = f'''<section class="pbody">
       </div>
     </section>'''
 
+# ---------- The Promise of Needs Awareness ----------
+# The foundation's words (November 2026), shown on the home page and, after "Our History", on About.
+# Both pages get exactly this markup, so a change made in the editor on one shows on the other.
+
+# "&#8288;" before each long dash is an invisible joiner: it keeps the dash on the line of the word before it,
+# so no line of the paragraph starts with a dash. link: what follows the text (the home page's link to About).
+def needs_awareness(link=''):
+    return f'''<div class="wrap why-grid promise-grid">
+        <div class="why-head reveal">
+          <h2 class="big" id="needs-awareness-h">The Promise of <em>Needs Awareness</em></h2>
+        </div>
+        <div class="why-body">
+          <p class="reveal">At the heart of our educational philosophy is <strong>Needs Awareness</strong>&#8288;—an approach that focuses on understanding universal human needs. By helping people recognize the shared human experiences beneath judgments, disagreements, and conflict, Needs Awareness provides a practical foundation for peace at every level of society: from individual self-understanding and emotional resilience to deeper interpersonal empathy, stronger community cooperation, and cross-cultural peacebuilding.</p>
+          <p class="reveal">Drawing on founder Thom Bond’s engineering background, the Foundation approaches peace not merely as a moral aspiration, but as something that can be systematically understood, taught, practiced, and evaluated. Through this lens, peace becomes an actionable skill set&#8288;—giving people anywhere in the world the tools to navigate differences and build life-serving relationships and environments.</p>
+        </div>{link}
+      </div>'''
+
 # ---------- about ----------
 
 about_hero = phero('{r}', 'About', [], 'About us', 'Peace education for <em>everyone</em>',
@@ -490,6 +508,10 @@ about_body = f'''<section class="pbody">
           <li class="reveal"><b>Today</b><p>Today, The Compassion Course Foundation, Inc. represents the next stage of this movement. By transforming an established educational network into a sustainable international resource, the Foundation expands global community coordination and meets the growing worldwide demand for accessible peace education.</p></li>
         </ol>
       </div>
+    </section>
+
+    <section class="sec promise" aria-labelledby="needs-awareness-h">
+      {needs_awareness()}
     </section>
 
     <section class="sec programs" aria-labelledby="board-h">
@@ -956,6 +978,12 @@ h = re.sub(r'<footer class="ftr">.*?</footer>', lambda m: footer('', home=True),
 h, cards_found = re.subn(r'(<!-- program cards:[^>]*-->).*?(<!-- /program cards -->)', lambda m: f'{m.group(1)}\n        {home_cards()}\n        {m.group(2)}', h, count=1, flags=re.S)
 if not cards_found:
     sys.exit('index.html: the "program cards" markers are missing, so the cards were not written')
+# The Promise of Needs Awareness, with the home page's link to About: under the title on a wide screen,
+# after the text on a narrow one (see .promise-grid in style.css).
+about_link = '\n        <a class="more reveal" href="about/">More about us <span aria-hidden="true">→</span></a>'
+h, promise_found = re.subn(r'(<!-- needs awareness:[^>]*-->).*?(<!-- /needs awareness -->)', lambda m: f'{m.group(1)}\n      {needs_awareness(about_link)}\n      {m.group(2)}', h, count=1, flags=re.S)
+if not promise_found:
+    sys.exit('index.html: the "needs awareness" markers are missing, so that section was not written')
 with open(home, 'w', encoding='utf-8', newline='\n') as f:
     f.write(h)
 print('synced', home)

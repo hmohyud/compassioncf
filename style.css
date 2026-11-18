@@ -111,6 +111,17 @@ em { font-style: italic; }
 .why-head p:not(.kicker) { color: var(--muted); font-size: 18px; }
 .why-head strong { color: var(--ink); }
 .why-body > p { font-size: 18px; color: var(--muted); margin-bottom: 30px; }
+.why-body > p:last-child { margin-bottom: 0; }
+.why-body strong { color: var(--ink); }
+/* The Promise of Needs Awareness (home and About): the title beside the text. The home page has a link to About,
+   which sits under the title here and comes after the text on a narrow screen. */
+.promise-grid { grid-template-rows: auto 1fr; row-gap: 0; }
+.promise-grid .why-body { grid-column: 2; grid-row: 1 / span 2; }
+.promise-grid > .more { grid-column: 1; grid-row: 2; justify-self: start; align-self: start; margin-top: 0; }
+/* on About it follows Our History, on the same ground, with its text in line with the years above it */
+.sec.promise { background: var(--cream); padding-top: 0; }
+.sec.promise .promise-grid { grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); }
+.sec.promise .why-body { padding-left: 36px; }
 .benefits { list-style: none; display: grid; gap: 14px; }
 .benefits li { display: flex; gap: 22px; align-items: center; padding: 22px 26px; border-radius: 18px; background: #fff; box-shadow: 0 10px 30px -18px rgba(60, 40, 90, .35); font: 400 20px/1.35 var(--serif); color: var(--ink); }
 .benefits li span { flex: none; font: 600 13px var(--sans); letter-spacing: .1em; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, var(--indigo), #6b4a9a); }
@@ -188,6 +199,12 @@ em { font-style: italic; }
   .lede { margin-inline: auto; }
   .hero-globe { max-width: 520px; margin: 0 auto; width: 100%; }
   .mv, .why-grid, .cards, .ways { grid-template-columns: 1fr; }
+  /* The Promise of Needs Awareness in one column: title, text, then the home page's link */
+  .promise-grid { grid-template-rows: none; }
+  .promise-grid .why-body, .promise-grid > .more { grid-column: auto; grid-row: auto; }
+  .promise-grid > .more { margin-top: 20px; }
+  .sec.promise .promise-grid { grid-template-columns: 1fr; }
+  .sec.promise .why-body { padding-left: 0; }
   .mv-card { padding: 36px 28px; }
   /* footer: the name and tagline across the top, the two lists of links side by side under it */
   .ftr-grid { grid-template-columns: 1fr 1fr; }
@@ -602,7 +619,6 @@ form.sending button[disabled] { opacity: .7; cursor: progress; transform: none; 
   .author img { width: 64px; height: 64px; }
   .read p, .read li { font-size: 18.5px; }
 }
-.why-head .more { display: inline-block; margin-top: 24px; }
 
 /* ============================================================
    Phones and tablets
@@ -664,7 +680,7 @@ form.sending button[disabled] { opacity: .7; cursor: progress; transform: none; 
   .hero .lede, .sec-head.center p:not(.kicker), .empty p, .facts-cap { text-wrap: balance; }   /* centred lines of even length, no stray last word */
   .more { display: inline-block; padding: 10px 0; }
   .card .more, .post-card .more { margin-top: 8px; }
-  .why-head .more, .prog .more { margin-top: 10px; }
+  .promise-grid > .more, .prog .more { margin-top: 10px; }
   .sec-head.split .more { margin: -6px 0 0; }
   /* breadcrumb: a bigger target without a taller row, and one line always (a long page name is cut short; the headline under it says it in full) */
   .crumbs { flex-wrap: nowrap; }

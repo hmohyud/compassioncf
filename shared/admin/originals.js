@@ -11,7 +11,7 @@
 //         "by-place"  the newer words now stand in several places that did not all start from the same wording,
 //                     so there is no single original to offer; kept here for reference
 //         "stale"     going back would no longer be true; for reference
-//         "removed"   the foundation emptied the line, and it was taken out of the pages; for reference
+//         "removed"   the foundation emptied the line or had its section replaced, and it was taken out of the pages; for reference
 //         "gone"      the line was on a page that no longer exists; for reference
 //
 // Written by a script from the saved changes and the pages. If a line's wording is
@@ -38,7 +38,6 @@ export const EARLIER = [
   { key: "2:079a683c081af7a0", kind: "kept", where: "Board", was: "Thom Bond is best known as the creator and leader of The Compassion Course, a comprehensive online training that has served over 32,000 participants and been translated into 20 languages in over 120 countries.", now: "Thom Bond is best known as the creator and leader of The Compassion Course, a comprehensive online training that has served over 50,000 participants and been translated into 20 languages in over 120 countries." },
   { key: "2:6ae167750aa28159", kind: "kept", where: "Contact", was: "Your gift funds scholarships and community programs around the world.", now: "Your gift funds scholarships and peace education programs around the world." },
   { key: "2:226eb790085892ac", kind: "kept", where: "Home", was: "Almost 25 years of teaching, becoming an online library of audio courses in 249 languages.", now: "25 years of compassion-centered teaching, digitized, translated, and indexed into a global online library in over 240 languages" },
-  { key: "2:cb8227cf8b53cb83", kind: "kept", where: "Home", was: "Communities are facing rising levels of polarization, stress, and conflict. While many efforts focus on resolving conflict after it has escalated, research across psychology, education, and peace studies consistently shows that peace is most effectively built by cultivating the skills, mindsets, and relationships that prevent conflict in the first place. <strong>This is the heart of peace education.</strong>", now: "Communities around the globe are facing rising levels of polarization, stress, and conflict. While many efforts focus on resolving conflict after it has escalated, research across psychology, education, and peace studies consistently shows that peace is most effectively built by cultivating the skills, mindsets, and quality of connection that prevent conflict in the first place. This is the heart of peace education." },
   { key: "2:46e2f803c9f3e397", kind: "kept", where: "Home", was: "Creator of The Compassion Course, a comprehensive online training that has served over 32,000 participants in more than 120 countries and 20 languages.", now: "Creator of The Compassion Course, a comprehensive online training that has served over 50,000 participants in more than 120 countries and 20 languages." },
   { key: "2:6363c1caddc70856", kind: "kept", where: "Home", was: "Discover our mission", now: "Discover Our Mission" },
   { key: "2:52db079fc573941b", kind: "kept", where: "Home", was: "Give to the work", now: "Donate To Our Mission" },
@@ -55,7 +54,6 @@ export const EARLIER = [
   { key: "2:d8a8e3caa7b6b8de", kind: "kept", where: "Programs, Scholarship Fund, Research Initiative, Archive, Donate", was: "The Compassion Course Fund", now: "Ending Financial Gatekeeping in Peace Education" },
   { key: "2:d21425134ce714b7", kind: "kept", where: "Programs, Scholarship Fund, Research Initiative, Archive, Donate", was: "A Global Pathway to Peace", now: "Peace Education Research On A Global Scale" },
   { key: "2:9e7798f434a1ef70", kind: "kept", where: "Programs, Scholarship Fund, Research Initiative, Donate", was: "A library for the world", now: "A multilingual, global digital library preserving peace education history" },
-  { key: "2:5707188f1b54db5b", kind: "kept", where: "Research Initiative", was: "A world already practising <em>compassion</em>", now: "A world already practicing compassion" },
   { key: "2:c467f707f45f268b", kind: "kept", where: "Research Initiative", was: "Open the door for someone new", now: "Science matters" },
   { key: "2:c50a7577e492de6b", kind: "kept", where: "Research Initiative", was: "The course provides the practical “how to” of creating more understanding, empathy, and compassion in our daily lives. The course starts with foundational concepts and practices that help us understand what engenders compassion and what blocks it, and as the year progresses, we work with more advanced practices that help us effectively bring more compassion into our everyday lives.", now: "To scale peace education worldwide, educators, policymakers, and funders need scientific evidence that peace education training creates lasting behavioral change for compassion and conflict-resolution. We will analyze behavioral shifts across thousands of learners from diverse backgrounds and regions within our global Compassion Course community. Through robust qualitative and quantitative science, we aim to capture the impact of our training and behavioral shifts in nonviolent communication, self-compassion and empathy." },
   { key: "2:a6813a5f1c18d9bb", kind: "kept", where: "Research Initiative", was: "Changing lives for 15 years, in over 120 countries, in 20 languages. A year-long journey into the practical “how&nbsp;to” of compassion.", now: "Using validated psychological instruments and real human stories to measure how compassion training transforms conflict behavior across borders" },
@@ -89,6 +87,7 @@ export const EARLIER = [
   { key: null, kind: "removed", where: "Every page", was: "Newsletter", now: "" },
   { key: null, kind: "removed", where: "Every page", was: "Occasional, hopeful news from our community — stories, events and new ways to take part.", now: "" },
   { key: null, kind: "removed", where: "Every page", was: "Volunteer", now: "" },
+  { key: null, kind: "removed", where: "Home", was: "Communities are facing rising levels of polarization, stress, and conflict. While many efforts focus on resolving conflict after it has escalated, research across psychology, education, and peace studies consistently shows that peace is most effectively built by cultivating the skills, mindsets, and relationships that prevent conflict in the first place. <strong>This is the heart of peace education.</strong>", now: "" },
   { key: null, kind: "removed", where: "Research Initiative", was: "120+", now: "" },
   { key: null, kind: "removed", where: "Research Initiative", was: "15", now: "" },
   { key: null, kind: "removed", where: "Research Initiative", was: "20", now: "" },
@@ -108,6 +107,7 @@ export const EARLIER = [
   { key: null, kind: "removed", where: "Research Initiative", was: "What engenders compassion, and what blocks it.", now: "" },
   { key: null, kind: "removed", where: "Research Initiative", was: "countries", now: "" },
   { key: null, kind: "removed", where: "Research Initiative", was: "participants", now: "" },
+  { key: null, kind: "removed", where: "Research Initiative", was: "A world already practising <em>compassion</em>", now: "" },
   { key: null, kind: "removed", where: "Scholarship Fund", was: "By doing so, the Fund:", now: "" },
   { key: null, kind: "removed", where: "Scholarship Fund", was: "It fuels a movement that empowers people everywhere to contribute to a more peaceful world.", now: "" },
   { key: null, kind: "gone", where: "Events (page removed)", was: "Gather, learn and <em>practise</em>", now: "Gather, learn and practice" },
