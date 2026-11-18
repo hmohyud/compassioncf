@@ -3,7 +3,7 @@
 // Any element with [data-donate] opens it. Give those links an href to the donate page (donate/),
 // so they still lead somewhere useful if this script doesn't load. An element with
 // [data-donate-auto] opens the dialog as soon as its page loads, which is what the donate page does. "Donate" calls the foundation's Firebase function
-// (createCheckoutSession, project compassioncf-web-site, amount in whole currency units) and sends
+// (createDonationCheckout, project compassioncf-web-site, amount in whole currency units) and sends
 // the donor to the Stripe checkout page it returns. Card details are only ever entered there.
 //
 // Stripe sends donors back to compassioncf.com/donate with ?success=true or ?canceled=true, which
@@ -13,7 +13,7 @@
 // --dn-title-font, --dn-radius, --dn-chip-radius, --dn-btn-bg, --dn-btn-ink, --dn-btn-font, --dn-btn-track,
 // --dn-btn-case, --dn-btn-radius, --dn-scrim).
 
-const CHECKOUT_FN = 'https://us-central1-compassioncf-web-site.cloudfunctions.net/createCheckoutSession';
+const CHECKOUT_FN = 'https://us-central1-compassioncf-web-site.cloudfunctions.net/createDonationCheckout';
 const LIVE_PAGE = 'https://compassioncf.com/donate';
 // While this site is still at its preview address, a failed call can point people to the donate
 // page of the site currently at compassioncf.com. Once this site is the one served there, that link
