@@ -25,11 +25,12 @@
 // earlier one keeps receiving entries. If HOME fails, the visitor is asked to try again, and a
 // copy may then arrive twice.)
 //
-// Since 17 November 2026 HOME is the site's own project. The copy goes to the foundation's earlier
-// project, which the editor's Inbox and Mailing list still read, and which other things may depend on.
+// Since 17 November 2026 HOME is the site's own project, which the editor's Inbox and Mailing list
+// read. Until 19 November 2026 a copy also went to the foundation's earlier project; nothing there
+// used it, so ALSO is empty now and a submission goes to one place only.
 const database = (project) => `https://firestore.googleapis.com/v1/projects/${project}/databases/(default)/documents`;
 const HOME = database('compassioncf-editor');
-const ALSO = [database('compassioncf-web-site')];
+const ALSO = [];
 
 const LIMITS = { name: 120, email: 200, location: 120, subject: 200, message: 5000 };
 const MAILING_LIST = 'Mailing list sign-up';   // shared/admin/app.js labels these notes in the inbox
