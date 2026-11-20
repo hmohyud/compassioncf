@@ -573,8 +573,6 @@ em { font-style: italic; }
    form sits flush in the site's own card. shared/contact.js makes the window as tall as the form. The card
    stops at 750px because a Jotform in a frame wider than 768px lays itself out as a page, with wide margins. */
 .form-card.jot { position: relative; top: 0; width: 100%; max-width: 750px; margin-inline: auto; padding: 0; overflow: hidden; }
-.jot-logo { display: flex; justify-content: center; padding: 40px 24px 0; background: #fff; }
-.jot-logo img { display: block; width: 216px; max-width: 62%; height: auto; }
 .jot-clip { --edge: 9px; position: relative; height: 1258px; overflow: hidden; }
 .jot-frame { position: absolute; top: calc(-1 * var(--edge)); left: calc(-1 * var(--edge)); width: calc(100% + 2 * var(--edge)); height: calc(100% + 2 * var(--edge)); border: 0; }
 .form-card > .jot-alt { margin: 0; padding: 16px 24px 20px; font-size: 15px; }
@@ -860,8 +858,6 @@ form.sending button[disabled] { opacity: .7; cursor: progress; transform: none; 
   .form-card { padding: 28px 22px 26px; border-radius: 24px; }
   .form-card > p { margin-bottom: 24px; }
   .jot-clip { height: 1330px; }   /* about what the foundation's form needs at this width, until it says exactly */
-  .jot-logo { padding-top: 30px; }
-  .jot-logo img { width: 168px; }
   .form .btn { justify-self: stretch; justify-content: center; }
   .side-list address { font-size: 19px; }
 }
