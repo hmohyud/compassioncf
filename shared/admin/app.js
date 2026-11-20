@@ -374,7 +374,7 @@ async function inbox() {
   const items = (await session.list('contactSubmissions')).sort((a, b) => (toDate(b.submittedAt) || 0) - (toDate(a.submittedAt) || 0));
   view().innerHTML = `
     ${takeFlash()}
-    <div class="adm-head"><div><h2>Inbox</h2><p>Messages sent through the Contact page.</p></div><p class="adm-meta">${items.length} message${items.length === 1 ? '' : 's'}</p></div>
+    <div class="adm-head"><div><h2>Inbox</h2><p>Messages sent through the Contact page until November 2026. Since then the Contact page uses the foundation’s Jotform, and new messages arrive there.</p></div><p class="adm-meta">${items.length} message${items.length === 1 ? '' : 's'}</p></div>
     ${items.length ? `<ul class="adm-list">${items.map((m) => `
       <li class="adm-msg">
         <header><span class="adm-title">${esc(m.subject || '(no subject)')}${Object.hasOwn(NOTE_BADGES, m.subject) ? `<span class="adm-badge">${NOTE_BADGES[m.subject]}</span>` : ''}</span><span class="adm-meta">${esc(dateTime(toDate(m.submittedAt)))}</span></header>

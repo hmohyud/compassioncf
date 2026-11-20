@@ -26,8 +26,12 @@ const CURRENCIES = [
   { code: 'CAD', symbol: 'C$', stripe: 'cad', min: 0.5 },
   { code: 'AUD', symbol: 'A$', stripe: 'aud', min: 0.5 },
 ];
-const PRESETS = [25, 50, 100, 250, 500];
+const PRESETS = [25, 50, 100, 500];
 const DEFAULT_PRESET = 50;
+// The foundation's own amount, set apart above the others: $240 is one full-year scholarship to the Compassion
+// Course (it replaced $250 on 20 November 2026, at the foundation's request). The words under it are shown only
+// with US dollars, since 240 in another currency is a different sum.
+const SCHOLARSHIP = { amount: 240, currency: 'USD', note: 'One full-year scholarship' };
 
 const css = `
 .dn { border: 0; padding: 0; margin: auto; width: min(480px, calc(100% - 24px)); max-width: none; max-height: calc(100dvh - 24px); background: transparent; color: var(--dn-ink, #1d1a17); overflow: visible; }
@@ -49,10 +53,17 @@ html:has(.dn[open]) { overflow: hidden; }
 .dn-cur select { appearance: none; -webkit-appearance: none; padding: 7px 30px 7px 12px; border: 1px solid var(--dn-line, rgba(0, 0, 0, .15)); border-radius: var(--dn-chip-radius, 12px); background: transparent; color: inherit; font: 600 13.5px var(--dn-sans, system-ui); cursor: pointer; }
 .dn-cur::after { content: ''; position: absolute; right: 12px; top: 50%; width: 6px; height: 6px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: translateY(-70%) rotate(45deg); pointer-events: none; opacity: .7; }
 .dn-cur select option { color: #1d1a17; }
-.dn-amts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.dn-amts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .dn-amt { min-height: 50px; padding: 0 4px; border: 1px solid var(--dn-line, rgba(0, 0, 0, .15)); border-radius: var(--dn-chip-radius, 12px); background: transparent; color: inherit; font: 600 16px var(--dn-sans, system-ui); cursor: pointer; transition: border-color .2s, background .2s, color .2s; }
 .dn-amt:hover { border-color: currentColor; }
 .dn-amt[aria-pressed="true"] { background: var(--dn-ink, #1d1a17); border-color: var(--dn-ink, #1d1a17); color: var(--dn-bg, #fff); }
+.dn-feature { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 6px 16px; flex-wrap: wrap; min-height: 66px; padding: 10px 20px; border: 1.5px solid var(--dn-feature-line, #f6b860); background: var(--dn-feature-bg, #fff4e3); text-align: left; }
+.dn-feature b { font-size: 24px; font-weight: 600; letter-spacing: -.01em; }
+.dn-feature .dn-note { display: inline-flex; align-items: center; gap: 7px; font-size: 14.5px; font-weight: 600; color: var(--dn-feature-ink, #9a4a1a); }
+.dn-feature .dn-note::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--dn-feature-line, #f6b860); box-shadow: 0 0 0 4px rgba(246, 184, 96, .25); }
+.dn-feature:hover { border-color: var(--dn-feature-ink, #9a4a1a); }
+.dn-feature[aria-pressed="true"] .dn-note { color: var(--dn-feature-on, #ffd89a); }
+.dn-feature .dn-note[hidden] { display: none; }
 .dn-other { display: block; margin-top: 16px; }
 .dn-in { display: flex; align-items: center; min-height: 50px; margin-top: 8px; padding: 0 14px; border: 1px solid var(--dn-line, rgba(0, 0, 0, .15)); border-radius: var(--dn-chip-radius, 12px); transition: border-color .2s; }
 .dn-in:focus-within { border-color: currentColor; }
@@ -72,10 +83,8 @@ html:has(.dn[open]) { overflow: hidden; }
 .dn-done .dn-go { margin-top: 26px; }
 @media (max-width: 480px) {
   .dn-card { padding: 32px 20px 22px; }
-  /* five amounts: three on the first row, the last two sharing the second, so no gap is left over */
-  .dn-amts { grid-template-columns: repeat(6, 1fr); }
-  .dn-amt { grid-column: span 2; }
-  .dn-amt:nth-child(n+4) { grid-column: span 3; }
+  .dn-feature { padding: 10px 16px; }
+  .dn-feature b { font-size: 22px; }
 }
 /* On a touch screen, iPhones zoom the whole page in when a field's text is under 16px. */
 @media (pointer: coarse) { .dn-cur select { font-size: 16px; } }
@@ -108,6 +117,7 @@ function build() {
           <span class="dn-cur"><select aria-label="Currency">${CURRENCIES.map((c) => `<option value="${c.code}">${c.code} ${c.symbol}</option>`).join('')}</select></span>
         </div>
         <div class="dn-amts" role="group" aria-labelledby="dn-amt-label">
+          <button class="dn-amt dn-feature" type="button" data-v="${SCHOLARSHIP.amount}" aria-pressed="false"><b></b> <span class="dn-note">${SCHOLARSHIP.note}</span></button>
           ${PRESETS.map((v) => `<button class="dn-amt" type="button" data-v="${v}" aria-pressed="false"></button>`).join('')}
         </div>
         <label class="dn-other"><span class="dn-label">Or enter an amount</span>
@@ -131,6 +141,7 @@ function build() {
     done: dlg.querySelector('.dn-done'),
     select: dlg.querySelector('select'),
     chips: [...dlg.querySelectorAll('.dn-amt')],
+    note: dlg.querySelector('.dn-feature .dn-note'),
     sym: dlg.querySelector('.dn-in i'),
     input: dlg.querySelector('.dn-in input'),
     err: dlg.querySelector('.dn-err'),
@@ -156,9 +167,10 @@ function amount() {
 
 function render() {
   ui.chips.forEach((b) => {
-    b.textContent = cur.symbol + b.dataset.v;
+    (b.querySelector('b') || b).textContent = cur.symbol + b.dataset.v;
     b.setAttribute('aria-pressed', String(+b.dataset.v === preset));
   });
+  ui.note.hidden = cur.code !== SCHOLARSHIP.currency;
   ui.sym.textContent = cur.symbol;
   ui.input.min = cur.min;
   const a = amount();

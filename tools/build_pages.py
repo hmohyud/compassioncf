@@ -81,7 +81,7 @@ def footer(r, home=False):
         <a href="{r}programs/">Programs</a>
         <a href="{r}news/">News and Updates</a>
         <a href="{r}board/">Board members</a>
-        <a href="{r}contact/">Contact us</a>
+        <a href="{r}contact/">Contact Us</a>
       </div>
       <div>
         <h4>Support</h4>
@@ -240,7 +240,7 @@ def other_programs(current):
         for slug, t, sub in PROGRAMS if slug != current)
     return f'''<div class="side-list">
               <h4>More programs</h4>{links}
-              <a href="{{r}}programs/"><b>All programs</b><small>Ways we bring compassion to life</small></a>
+              <a href="{{r}}programs/"><b>All Programs</b><small>Ways we bring compassion to life</small></a>
             </div>'''
 
 def pager(current):
@@ -253,14 +253,26 @@ def pager(current):
     if nxt:
         out += f'<a class="next" href="{{r}}programs/{nxt[0]}/"><small>Next program →</small><b>{nxt[1]}</b></a>'
     else:
-        out += '<a class="next" href="{r}programs/"><small>Back to →</small><b>All programs</b></a>'
+        out += '<a class="next" href="{r}programs/"><small>Back to →</small><b>All Programs</b></a>'
     return out + '</nav>'
 
 # (The Scholarship Fund and Research Initiative pages each ended with the participant globe until
 # 17 November 2026, when the foundation asked for it to be taken off both. The home page has its own.)
 
-# The sentence that closes a program page, and the two buttons under it, in the foundation's wording.
-HEAR_FROM_YOU = 'If you would like to contribute to this program, or would like to know more, we’d love to hear from you.'
+# Each program page closes with a box asking for support, and the card beside it asks too; both buttons open the
+# donate window. Their words are the foundation's, sent on 20 November 2026 (Debra Chew and Thom Bond, by email):
+# the boxes' text and the buttons' names, which replaced "Donate here". The boxes' headings and the cards' lines
+# are the foundation's own wording from the site's editor that day, written into the pages.
+def callout(heading, paragraphs, label, lead=''):
+    lead_html = f'\n            <p class="callout-lead">{lead}</p>' if lead else ''
+    paras = ''.join(f'\n            <p{cls}>{p}</p>' for cls, p in paragraphs)
+    return f'''<div class="callout reveal">
+            <h2>{heading}</h2>{lead_html}{paras}
+            <div class="cta">
+              <a class="btn btn-sun" href="{{r}}donate/" data-donate>{label}</a>
+              <a class="btn btn-line" href="{{r}}contact/">Contact Us</a>
+            </div>
+          </div>'''
 
 # ---------- programs ----------
 
@@ -282,18 +294,14 @@ fund_body = f'''<section class="pbody">
 
           <blockquote class="pull reveal">The Fund ensures that the benefits of peace education are not limited by privilege or circumstance.</blockquote>
 
-          <div class="callout reveal">
-            <h2>Help make a difference</h2>
-            <p>{HEAR_FROM_YOU}</p>
-            <div class="cta">
-              <a class="btn btn-sun" href="{{r}}donate/" data-donate>Donate here</a>
-              <a class="btn btn-line" href="{{r}}contact/">Contact us</a>
-            </div>
-          </div>
+          {callout('Give Someone the Opportunity to Learn', [
+              ('', 'A gift of $240 provides one person with a full-year scholarship to the Compassion Course, and helps remove financial barriers to peace education.'),
+              (' class="fine"', 'All contributions are administered by the Compassion Course Foundation for its scholarship program. The Foundation retains discretion over the selection of recipients and distribution of awards in accordance with its scholarship policies.'),
+          ], 'Support a Scholarship')}
           {pager('scholarship-fund')}
         </div>
         <aside class="aside" aria-label="Support and more programs">
-          {give_card('Support this program', 'Access Matters', 'Your gift funds scholarships and peace education programs throughout the world', 'Donate here')}
+          {give_card('Support this program', 'Access Matters', '$240 provides one person with a full-year scholarship to the Compassion Course', 'Support a Scholarship')}
           {other_programs('scholarship-fund')}
         </aside>
       </div>
@@ -305,14 +313,18 @@ research_hero = phero('{r}', 'The Global Peace Education Research Initiative', [
 research_body = f'''<section class="pbody">
       <div class="wrap article">
         <div class="prose">
-          <p class="lead reveal">Using validated psychological instruments and real human stories to measure how compassion training transforms conflict behavior across borders</p>
+          <p class="lead reveal">Using validated psychological instruments and real human stories to measure how needs-aware peace education transforms conflict</p>
 
           <h2 class="reveal">Why Research Matters</h2>
-          <p class="reveal">To scale peace education worldwide, educators, policymakers, and funders need scientific evidence that peace education training creates lasting behavioral change for compassion and conflict-resolution. We will analyze behavioral shifts across thousands of learners from diverse backgrounds and regions within our global Compassion Course community. Through robust qualitative and quantitative science, we aim to capture the impact of our training and behavioral shifts in nonviolent communication, self-compassion and empathy.</p>
+          <p class="reveal">To scale peace education worldwide, educators, policymakers, and funders need scientific evidence that peace education training creates lasting behavioral change for the cultivation of compassion and effective conflict-resolution. We are currently analyzing behavioral shifts across thousands of learners from diverse backgrounds and regions within our well-established global network. Through robust qualitative and quantitative science, we aim to capture the impact of our training and behavioral shifts in nonviolent communication, self-compassion and empathy.</p>
+
+          {callout('Help Build the Evidence for Peace Education', [
+              ('', 'Your contribution supports data management, statistical analysis, and research infrastructure to evaluate and strengthen peace education.'),
+          ], 'Support Research')}
           {pager('research-initiative')}
         </div>
         <aside class="aside" aria-label="Support and more programs">
-          {give_card('Support this program', 'Science matters', 'Your gift funds peace education research on a global scale', 'Donate here')}
+          {give_card('Support this program', 'Science Matters', 'Help build the evidence for peace education', 'Support Research')}
           {other_programs('research-initiative')}
         </aside>
       </div>
@@ -343,18 +355,13 @@ archive_body = f'''<section class="pbody">
             <li><b>Distribute</b><span>Distributing our digital library around the world.</span></li>
           </ol>
 
-          <div class="callout reveal">
-            <h2>Help us build the library</h2>
-            <p>{HEAR_FROM_YOU}</p>
-            <div class="cta">
-              <a class="btn btn-ink" href="{{r}}contact/">Contact us</a>
-              <a class="btn btn-line" href="{{r}}donate/" data-donate>Support this Program</a>
-            </div>
-          </div>
+          {callout('Help Us Build The Library', [
+              ('', 'Your contribution supports archival preservation, digitization, organization, and translation of decades of compassion-centered teaching.'),
+          ], 'Support the Archive', lead='Preserve knowledge and expand access.')}
           {pager('archive')}
         </div>
         <aside class="aside" aria-label="Support and more programs">
-          {give_card('Support the archive', 'Information Matters', 'Help preserve and share decades of compassion-centered teaching around the world.', 'Donate here')}
+          {give_card('Support the archive', 'Information Matters', 'Preserve knowledge and expand access of decades of compassion-centered teaching.', 'Support the Archive')}
           {other_programs('archive')}
         </aside>
       </div>
@@ -377,18 +384,13 @@ obs_body = f'''<section class="pbody">
             <div><dt>Links</dt><dd>Lived experiences to verified local resources</dd></div>
           </dl>
 
-          <div class="callout reveal">
-            <h2>This program is forming</h2>
-            <p>{HEAR_FROM_YOU}</p>
-            <div class="cta">
-              <a class="btn btn-ink" href="{{r}}contact/">Contact us</a>
-              <a class="btn btn-line" href="{{r}}donate/" data-donate>Support this Program</a>
-            </div>
-          </div>
+          {callout('This Program Is Forming', [
+              ('', 'Support the rollout of a novel intelligence infrastructure for peace-making. Using advanced data tools to capture, analyze, and track human needs at individual, organizational, community, regional, and global scales, the Observatory aims to uncover new strategies and opportunities for building peace.'),
+          ], 'Support Observatory', lead='Address human needs with intelligent strategies.')}
           {pager('global-needs-observatory')}
         </div>
         <aside class="aside" aria-label="Support and more programs">
-          {give_card('Support this program', 'Help peace education reach everyone', 'Your gift funds scholarships and peace education programs throughout the world.', 'Donate here')}
+          {give_card('Support this program', 'Action Matters', 'Address human needs with cutting-edge intelligent strategies for peace-making', 'Support Observatory')}
           {other_programs('global-needs-observatory')}
         </aside>
       </div>
@@ -399,9 +401,9 @@ programs_hero = phero('{r}', 'Programs', [], 'Our programs', 'Ways we bring comp
 
 # What the programs page shows for each program: its picture, a few lines, the link's words, and a status if it has one.
 PROGRAM_ROWS = {
-    'scholarship-fund': ('<img src="{s}img/hands.jpg" alt="" loading="lazy">', 'Scholarships and logistical support, so that peace education is never limited by privilege or circumstance.', 'See more about the fund', ''),
-    'research-initiative': ('<img src="{s}img/online.jpg" alt="" loading="lazy">', 'Evaluating the impact of peace education training with robust science', 'See how the initiative works', ''),
-    'archive': (WAVE, '25 years of compassion-centered teaching are digitized, translated, and indexed into a global online library in over 240 languages', 'Inside the archive', ''),
+    'scholarship-fund': ('<img src="{s}img/hands.jpg" alt="" loading="lazy">', 'Scholarships and logistical support, so that peace education is never limited by privilege or circumstance.', 'See More About the Fund', ''),
+    'research-initiative': ('<img src="{s}img/online.jpg" alt="" loading="lazy">', 'Evaluating the impact of peace education training with robust science', 'See the Initiative', ''),
+    'archive': (WAVE, '25 years of compassion-centered teaching are digitized, translated, and indexed into a global online library in over 240 languages', 'Inside the Archive', ''),
     'global-needs-observatory': (STARMAP, 'Mapping universal human needs, procuring resource data, and applying Intelligence to create breakthrough conflict resolution strategies.', 'Inside the Observatory', 'Forming'),
 }
 
@@ -521,7 +523,7 @@ about_body = f'''<section class="pbody">
             <p class="kicker">Our board</p>
             <h2 class="big" id="board-h">The people <em>behind</em> the work</h2>
           </div>
-          <a class="more" href="{{r}}board/">Meet the board <span aria-hidden="true">→</span></a>
+          <a class="more" href="{{r}}board/">Meet the Board <span aria-hidden="true">→</span></a>
         </div>
         <div class="mini-board">
           <a class="mini reveal" href="{{r}}board/#thom-bond">
@@ -549,7 +551,7 @@ about_body = f'''<section class="pbody">
         <div class="ways">
           <a class="way reveal" href="{{r}}donate/" data-donate>
             <span class="way-n">Give</span>
-            <h3>Donate here</h3>
+            <h3>Donate Here</h3>
             <p>Fund scholarships and peace education programs</p>
             <span class="arrow" aria-hidden="true">→</span>
           </a>
@@ -667,8 +669,8 @@ news_body = f'''<section class="pbody paper" id="resources">
             <a class="more" href="{{r}}blog/" data-cms-more hidden>All essays <span aria-hidden="true">→</span></a>
           </div>
           <div class="posts" data-posts>{SKEL * 3}</div>
-          <p class="cms-note" data-cms-empty hidden>No essays yet. Check back soon.</p>
-          <p class="cms-note" data-cms-error hidden>We couldn’t load the essays just now. Please try again in a moment.</p>
+          <p class="cms-note" data-cms-empty data-say="No essays yet. Check back soon." hidden></p>
+          <p class="cms-note" data-cms-error data-say="We couldn’t load the essays just now. Please try again in a moment." hidden></p>
         </div>
 
         <div class="res-pair">
@@ -678,13 +680,13 @@ news_body = f'''<section class="pbody paper" id="resources">
             <p class="pod-show"><a href="{PODCAST}" target="_blank" rel="noopener">Engineering Peace with Thom Bond</a></p>
             <ol class="eps">{episodes()}
             </ol>
-            <a class="more" href="{PODCAST}" target="_blank" rel="noopener">All episodes <span aria-hidden="true">→</span></a>
+            <a class="more" href="{PODCAST}" target="_blank" rel="noopener">All Episodes <span aria-hidden="true">→</span></a>
           </div>
           <div class="needs-card reveal">
             <span class="mv-ico" aria-hidden="true">{ICON['heart']}</span>
             <h3>Feelings and Needs List</h3>
             <p>A printable reference to keep beside you as you practice.</p>
-            <a class="btn btn-ink" href="{NEEDS_LIST}" target="_blank" rel="noopener">Open the list <small>(PDF)</small></a>
+            <a class="btn btn-ink" href="{NEEDS_LIST}" target="_blank" rel="noopener">Open the List <small>(PDF)</small></a>
           </div>
         </div>
       </div>
@@ -703,8 +705,8 @@ news_body = f'''<section class="pbody paper" id="resources">
             </ol>
             <div class="empty" data-events-empty hidden>
               {ICON['horizon']}
-              <h3>Nothing on the calendar just yet</h3>
-              <p data-events-note>New dates are shared with our mailing list first.</p>
+              <h3 data-say="Nothing on the calendar just yet"></h3>
+              <p data-events-note data-say="New dates are shared with our mailing list first."></p>
             </div>
           </div>
         </div>
@@ -730,8 +732,8 @@ blog_hero = phero('{r}', 'Essays', [('News and Updates', '{r}news/')], 'Essays',
 blog_body = f'''<section class="pbody paper">
       <div class="wrap" data-cms="blog-list" data-href="post.html?id=">
         <div class="posts two featured" data-posts>{SKEL * 3}</div>
-        <p class="cms-note" data-cms-empty hidden>No essays yet. Check back soon.</p>
-        <p class="cms-note" data-cms-error hidden>We couldn’t load the essays just now. Please try again in a moment.</p>
+        <p class="cms-note" data-cms-empty data-say="No essays yet. Check back soon." hidden></p>
+        <p class="cms-note" data-cms-error data-say="We couldn’t load the essays just now. Please try again in a moment." hidden></p>
       </div>
     </section>'''
 
@@ -773,6 +775,15 @@ post_body = f'''<section class="pbody">
 contact_hero = phero('{r}', 'Contact', [], 'Contact', 'We’d love to <em>hear</em> from you',
     lede='Send us a message and we’ll respond as soon as possible.')
 
+# The contact form is the foundation's own Jotform. Its questions, its thank-you note and where its messages
+# are sent are all set at jotform.com by the foundation, not here: this page only shows it, in a frame, and
+# shared/contact.js keeps the frame as tall as the form. To show a different form, change the number.
+# The logo at the top of the card is the site's own copy of the one in the form (the same file); the styling
+# kept for the form in _reference/jotform/contact-form.css hides the form's copy, so it shows once.
+JOTFORM = '263233512254045'
+JOTFORM_AT = f'https://form.jotform.com/{JOTFORM}'
+CONTACT_JS = '\n  <script type="module" src="{s}contact.js"></script>'
+
 contact_body = f'''<section class="pbody">
       <div class="wrap split">
         <div class="contact-aside">
@@ -784,25 +795,18 @@ contact_body = f'''<section class="pbody">
             <span class="way-n">Support the work</span>
             <h3>Help peace education reach everyone</h3>
             <p>Your gift funds scholarships and peace education programs around the world.</p>
-            <a class="btn btn-sun" href="{{r}}donate/" data-donate>Donate here</a>
+            <a class="btn btn-sun" href="{{r}}donate/" data-donate>Donate Here</a>
           </div>
           <div class="side-list reveal">
             {social('{s}', 'social light')}
           </div>
         </div>
-        <div class="form-card reveal">
-          <h2>Send a message</h2>
-          <p>Questions about the course, the Foundation, partnerships or anything else.</p>
-          <form class="form" data-form="contact">
-            <div class="form-row">
-              <div class="field"><label for="c-name">Name</label><input id="c-name" name="name" required maxlength="120" autocomplete="name"></div>
-              <div class="field"><label for="c-email">Email</label><input id="c-email" name="email" type="email" required maxlength="200" autocomplete="email"></div>
-            </div>
-            <div class="field"><label for="c-subject">Subject</label><input id="c-subject" name="subject" required maxlength="200"></div>
-            <div class="field"><label for="c-msg">Message</label><textarea id="c-msg" name="message" required maxlength="5000"></textarea></div>
-            <button class="btn btn-sun" type="submit">Send message</button>
-            <p class="form-msg" data-form-msg role="status"></p>
-          </form>
+        <div class="form-card jot reveal">
+          <div class="jot-logo"><img src="{{s}}img/mark.png" alt="" width="256" height="238"></div>
+          <div class="jot-clip" data-jotform-clip>
+            <iframe class="jot-frame" data-jotform="{JOTFORM}" src="{JOTFORM_AT}?isIframeEmbed=1" title="Contact The Compassion Course Foundation" scrolling="no"></iframe>
+          </div>
+          <p class="jot-alt" data-jotform-alt hidden>The form is taking a while to appear. <a href="{JOTFORM_AT}" target="_blank" rel="noopener">Open the Form in a New Tab</a></p>
         </div>
       </div>
     </section>'''
@@ -885,7 +889,7 @@ notfound_body = f"""<section class="pbody">
             <a class="btn btn-ink" href="{{r}}">Home</a>
             <a class="btn btn-line" href="{{r}}programs/">Programs</a>
             <a class="btn btn-line" href="{{r}}news/">News and Updates</a>
-            <a class="btn btn-line" href="{{r}}contact/">Contact us</a>
+            <a class="btn btn-line" href="{{r}}contact/">Contact Us</a>
           </div>
         </div>
       </div>
@@ -921,7 +925,7 @@ PAGES = [
     ('board/index.html', 'Board members', 'Meet the board guiding the Compassion Course Foundation.', 'about', board_hero, board_body, ''),
     ('blog/index.html', 'Essays', 'Essays and reflections from Thom Bond and the Compassion Course community.', 'news', blog_hero, blog_body, CMS_JS),
     ('blog/post.html', 'Essay', 'An essay from the Compassion Course Foundation.', 'news', post_hero, post_body, CMS_JS),
-    ('contact/index.html', 'Contact us', 'Get in touch with the Compassion Course Foundation.', 'contact', contact_hero, contact_body, ''),
+    ('contact/index.html', 'Contact us', 'Get in touch with the Compassion Course Foundation.', 'contact', contact_hero, contact_body, CONTACT_JS),
     ('donate/index.html', 'Donate', 'Give to the Compassion Course Foundation: secure online donations through Stripe.', None, donate_hero, donate_body, ''),
 ]
 
@@ -949,8 +953,8 @@ for old in ('events/index.html', 'volunteer/index.html', 'programs/course-fund/i
 # What each program's card on the home page shows: its picture, one line, the link's words, and a status if it has one.
 HOME_CARDS = {
     'scholarship-fund': ('<img src="shared/img/hands.jpg" alt="Many hands stacked together in a circle" loading="lazy">', 'Scholarships and logistical support, so that peace education is never limited by privilege or circumstance', 'See the Fund', ''),
-    'research-initiative': ('<img src="shared/img/online.jpg" alt="An online class with many participants on a laptop screen" loading="lazy">', 'Evaluating the impact of peace education training with robust science', 'See how the initiative works', ''),
-    'archive': (WAVE, '25 years of compassion-centered teaching, digitized, translated, and indexed into a global online library in over 240 languages', 'Inside the archive', ''),
+    'research-initiative': ('<img src="shared/img/online.jpg" alt="An online class with many participants on a laptop screen" loading="lazy">', 'Evaluating the impact of peace education training with robust science', 'See the Initiative', ''),
+    'archive': (WAVE, '25 years of compassion-centered teaching, digitized, translated, and indexed into a global online library in over 240 languages', 'Inside the Archive', ''),
     'global-needs-observatory': (STARMAP, 'A needs-based framework and infrastructure for peace engineering.', 'Inside the Observatory', 'Forming'),
 }
 
@@ -980,7 +984,7 @@ if not cards_found:
     sys.exit('index.html: the "program cards" markers are missing, so the cards were not written')
 # The Promise of Needs Awareness, with the home page's link to About: under the title on a wide screen,
 # after the text on a narrow one (see .promise-grid in style.css).
-about_link = '\n        <a class="more reveal" href="about/">More about us <span aria-hidden="true">→</span></a>'
+about_link = '\n        <a class="more reveal" href="about/">More About Us <span aria-hidden="true">→</span></a>'
 h, promise_found = re.subn(r'(<!-- needs awareness:[^>]*-->).*?(<!-- /needs awareness -->)', lambda m: f'{m.group(1)}\n      {needs_awareness(about_link)}\n      {m.group(2)}', h, count=1, flags=re.S)
 if not promise_found:
     sys.exit('index.html: the "needs awareness" markers are missing, so that section was not written')

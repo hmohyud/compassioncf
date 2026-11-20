@@ -200,11 +200,20 @@ export async function publishedPosts() {
   return posts.sort((a, b) => (toDate(b.publishedAt) || 0) - (toDate(a.publishedAt) || 0));
 }
 
+// A message for an empty or failed list is kept in its data-say attribute, not as text, and written out only
+// when it is shown. Otherwise a reader that does not run scripts (a search engine, or a tool that reads a
+// page for someone) is shown every message at once: no essays, couldn't load them, nothing on the calendar.
+function reveal(node) {
+  if (!node) return;
+  for (const n of [node, ...node.querySelectorAll('[data-say]')]) if (n.dataset.say && !n.textContent.trim()) n.textContent = n.dataset.say;
+  node.hidden = false;
+}
+
 async function blogList(el) {
   const slot = el.querySelector('[data-posts]') || el;
   const href = el.dataset.href || 'post.html?id=';
   const skip = el.hasAttribute('data-exclude-current') ? new URLSearchParams(location.search).get('id') : null;
-  const show = (sel) => { const n = el.querySelector(sel); if (n) n.hidden = false; };
+  const show = (sel) => reveal(el.querySelector(sel));
   try {
     const all = (await publishedPosts()).filter((p) => p.id !== skip);
     const posts = all.slice(0, +el.dataset.limit || Infinity);
@@ -298,7 +307,8 @@ async function events(el) {
   const settle = () => {
     const any = listEl.children.length > 0;
     listEl.hidden = !any;
-    part('empty').hidden = any;
+    if (any) part('empty').hidden = true;
+    else reveal(part('empty'));
     if (part('loading')) part('loading').hidden = true;
   };
   tidy();   // what is known already: a date that has passed, or one remembered as moved from an earlier visit

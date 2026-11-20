@@ -1,18 +1,20 @@
 // Real form submissions. A form opts in with data-form and needs a [data-form-msg] element for the reply:
 //
-//   <form data-form="contact | newsletter"> … <p data-form-msg role="status"></p></form>
+//   <form data-form="newsletter"> … <p data-form-msg role="status"></p></form>
 //
 // Each submission is saved as a document in a Firestore database, in the shape the previous site wrote,
-// so it shows up in the editor's Inbox and Mailing list like any other:
+// so it shows up in the editor's Mailing list like any other:
 //
-//   contact     contactSubmissions       { name, email, subject, message, submittedAt }
 //   newsletter  newsletterSubscriptions  { email, subscribedAt, isActive: true }, and, from the
 //                                        "Join our Mailing List" box, { name, location } as well
 //
+// (The Contact page's form is not one of these. It is the foundation's Jotform, shown in a frame: see
+// shared/contact.js.)
+//
 // The name and the town or country are newer than the list itself. If a database's rules only accept
 // the three fields the list has always had, the address is still saved the old way, and the name and
-// place are sent to the inbox as a note with the subject "Mailing list sign-up". Either way the sign-up
-// is kept and nothing the person typed is lost.
+// place are sent to the editor's Inbox (contactSubmissions) as a note with the subject "Mailing list
+// sign-up". Either way the sign-up is kept and nothing the person typed is lost.
 //
 // No API key is sent; whether a write is accepted is decided by the database's own rules.
 
@@ -32,11 +34,10 @@ const database = (project) => `https://firestore.googleapis.com/v1/projects/${pr
 const HOME = database('compassioncf-editor');
 const ALSO = [];
 
-const LIMITS = { name: 120, email: 200, location: 120, subject: 200, message: 5000 };
+const LIMITS = { name: 120, email: 200, location: 120 };
 const MAILING_LIST = 'Mailing list sign-up';   // shared/admin/app.js labels these notes in the inbox
 
 const COPY = {
-  contact: 'Thank you. Your message is on its way, and we’ll reply as soon as we can.',
   newsletter: 'Thank you. You’re on the list.',
   failed: 'Sorry, that didn’t go through. Please try again in a moment.',
 };
@@ -67,7 +68,6 @@ async function create(to, collection, data, background = false) {
 
 // What each kind of form holds. Read from the form once, so every database is sent exactly the same.
 const READ = {
-  contact: (f) => ({ name: f('name'), email: f('email'), subject: f('subject'), message: f('message'), submittedAt: new Date() }),
   newsletter: (f) => ({
     entry: { email: f('email'), subscribedAt: new Date(), isActive: true },
     details: Object.fromEntries([['name', f('name')], ['location', f('location')]].filter(([, v]) => v)),
@@ -76,7 +76,6 @@ const READ = {
 
 // How one database is sent it.
 const WRITE = {
-  contact: (to, doc, background) => create(to, 'contactSubmissions', doc, background),
   newsletter: async (to, { entry, details }, background) => {
     if (!Object.keys(details).length) return create(to, 'newsletterSubscriptions', entry, background);
     try {

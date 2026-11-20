@@ -68,10 +68,11 @@ function fnv(str, seed) {
   return h.toString(16).padStart(8, '0');
 }
 // A saved change is kept under "<generation>:<hash of the sentence>". When wording saved in the editor is
-// written into the pages themselves, as it was on 16 November 2026, raise the generation: the changes
-// saved before then are part of the pages now, so they are no longer laid over them (and a line that was
-// blanked then cannot blank a new line that happens to read the same). They stay in the database, unused.
-const TEXT_GENERATION = '2';
+// written into the pages themselves, as it was on 16 November 2026 (generation 2) and 20 November 2026
+// (generation 3), raise the generation: the changes saved before then are part of the pages now, so they are
+// no longer laid over them (and a line that was blanked then cannot blank a new line that happens to read the
+// same). They stay in the database, unused.
+const TEXT_GENERATION = '3';
 export const keyFor = (html) => `${TEXT_GENERATION}:${fnv(html, 2166136261)}${fnv(html, 0x9e3779b9)}`;
 export const isCurrent = (key) => String(key).startsWith(`${TEXT_GENERATION}:`);
 
