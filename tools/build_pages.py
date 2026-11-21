@@ -778,9 +778,9 @@ contact_hero = phero('{r}', 'Contact', [], 'Contact', 'We’d love to <em>hear</
 # The contact form is the foundation's own Jotform. Its questions, its thank-you note and where its messages
 # are sent are all set at jotform.com by the foundation, not here: this page only shows it, in a frame, and
 # shared/contact.js keeps the frame as tall as the form. To show a different form, change the number.
-# The logo at the top of the card is the form's own, so it shows once whether or not the foundation has pasted
-# the styling kept in _reference/jotform/contact-form.css into the form (that styling sizes it; it does not hide
-# it). Until 20 November 2026 the page showed its own copy above the form, and the form's showed under it.
+# The logo is the site's own copy, in the space under the cards beside the form (after them on a phone), where
+# the foundation asked for it on 21 November 2026. The styling the foundation pasted into the form, kept in
+# _reference/jotform/contact-form.css, leaves the form's own copy out, so the logo shows once.
 JOTFORM = '263233512254045'
 JOTFORM_AT = f'https://form.jotform.com/{JOTFORM}'
 CONTACT_JS = '\n  <script type="module" src="{s}contact.js"></script>'
@@ -801,6 +801,7 @@ contact_body = f'''<section class="pbody">
           <div class="side-list reveal">
             {social('{s}', 'social light')}
           </div>
+          <div class="contact-mark reveal" data-no-edit><img src="{{s}}img/mark-large.png" alt="" width="512" height="476"></div>
         </div>
         <div class="form-card jot reveal">
           <div class="jot-clip" data-jotform-clip>

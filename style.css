@@ -315,7 +315,7 @@ em { font-style: italic; }
 .give-card > * { position: relative; }
 .give-card h3 { font: 400 29px/1.15 var(--serif); margin: 10px 0 12px; }
 .give-card p { color: rgba(255, 255, 255, .76); font-size: 15.5px; line-height: 1.6; margin-bottom: 24px; }
-.give-card .btn { width: 100%; justify-content: center; }
+.give-card .btn { width: 100%; justify-content: center; text-align: center; }
 .side-list { padding: 26px 30px 12px; border-radius: 26px; background: rgba(255, 255, 255, .8); border: 1px solid #fff; box-shadow: 0 24px 50px -32px rgba(60, 40, 90, .4); }
 .side-list h4 { font: 600 12px var(--sans); letter-spacing: .24em; text-transform: uppercase; color: var(--red); margin-bottom: 6px; }
 .side-list > a { display: block; padding: 14px 0; text-decoration: none; border-top: 1px solid rgba(20, 26, 68, .08); }
@@ -573,7 +573,7 @@ em { font-style: italic; }
    form sits flush in the site's own card. shared/contact.js makes the window as tall as the form. The card
    stops at 750px because a Jotform in a frame wider than 768px lays itself out as a page, with wide margins. */
 .form-card.jot { position: relative; top: 0; width: 100%; max-width: 750px; margin-inline: auto; padding: 0; overflow: hidden; }
-.jot-clip { --edge: 9px; position: relative; height: 1258px; overflow: hidden; }
+.jot-clip { --edge: 9px; position: relative; height: 927px; overflow: hidden; }
 .jot-frame { position: absolute; top: calc(-1 * var(--edge)); left: calc(-1 * var(--edge)); width: calc(100% + 2 * var(--edge)); height: calc(100% + 2 * var(--edge)); border: 0; }
 .form-card > .jot-alt { margin: 0; padding: 16px 24px 20px; font-size: 15px; }
 .form { display: grid; gap: 18px; }
@@ -587,8 +587,11 @@ em { font-style: italic; }
 .form .btn { justify-self: start; margin-top: 4px; }
 .form-card .form-msg { color: #9a4a1a !important; font-size: 15px; }
 .contact-aside { display: grid; gap: 22px; }
-/* the form is the taller column: on a screen with room for it, the address and the cards stay in view beside it */
-@media (min-width: 961px) and (min-height: 760px) { .contact-aside { position: sticky; top: 104px; } }
+/* The form is the taller column. Beside it the address and the cards are made as tall as the form, and the logo
+   sits in the middle of the space that leaves under them. In one column it follows the cards. */
+.contact-mark { display: grid; place-items: center; padding: 10px 0; }
+.contact-mark img { width: 176px; height: auto; }
+@media (min-width: 961px) { .contact-aside { align-self: stretch; grid-template-rows: auto auto auto minmax(0, 1fr); } }
 .side-list address { padding: 6px 0 16px; font: normal 400 20px/1.5 var(--serif); color: var(--ink); }
 
 /* form replies (shared/forms.js) */
@@ -857,7 +860,9 @@ form.sending button[disabled] { opacity: .7; cursor: progress; transform: none; 
   .split-head > p:not(.kicker) { margin-bottom: 28px; }
   .form-card { padding: 28px 22px 26px; border-radius: 24px; }
   .form-card > p { margin-bottom: 24px; }
-  .jot-clip { height: 1330px; }   /* about what the foundation's form needs at this width, until it says exactly */
+  .jot-clip { height: 956px; }   /* about what the foundation's form needs at this width, until it says exactly */
+  .contact-mark { padding: 6px 0 0; }
+  .contact-mark img { width: 132px; }
   .form .btn { justify-self: stretch; justify-content: center; }
   .side-list address { font-size: 19px; }
 }
