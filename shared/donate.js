@@ -12,6 +12,9 @@
 // Themed through CSS variables (--dn-bg, --dn-ink, --dn-muted, --dn-line, --dn-accent, --dn-sans,
 // --dn-title-font, --dn-radius, --dn-chip-radius, --dn-btn-bg, --dn-btn-ink, --dn-btn-font, --dn-btn-track,
 // --dn-btn-case, --dn-btn-radius, --dn-scrim).
+//
+// Its wording can be changed in the site's editor: "Edit this page", then "Donation box" in the editor's bar
+// (see EDITABLE below, and "wording a script puts on the page" in shared/content.js).
 
 const CHECKOUT_FN = 'https://us-central1-compassioncf-editor.cloudfunctions.net/createDonationCheckout';
 const LIVE_PAGE = 'https://compassioncf.com/donate';
@@ -32,6 +35,10 @@ const DEFAULT_PRESET = 50;
 // Course (it replaced $250 on 20 November 2026, at the foundation's request). The words under it are shown only
 // with US dollars, since 240 in another currency is a different sum.
 const SCHOLARSHIP = { amount: 240, currency: 'USD', note: 'One full-year scholarship' };
+// The box's wording can be changed in the site's editor, like the text of a page. Each piece that may be changed
+// carries this mark; shared/content.js lays a saved change over it and lets a signed-in editor click and retype
+// it. The amounts, the Donate button and the messages about a payment are not wording of this kind.
+const EDITABLE = 'data-editable="donation box"';
 
 const css = `
 .dn { border: 0; padding: 0; margin: auto; width: min(480px, calc(100% - 24px)); max-width: none; max-height: calc(100dvh - 24px); background: transparent; color: var(--dn-ink, #1d1a17); overflow: visible; }
@@ -57,13 +64,20 @@ html:has(.dn[open]) { overflow: hidden; }
 .dn-amt { min-height: 50px; padding: 0 4px; border: 1px solid var(--dn-line, rgba(0, 0, 0, .15)); border-radius: var(--dn-chip-radius, 12px); background: transparent; color: inherit; font: 600 16px var(--dn-sans, system-ui); cursor: pointer; transition: border-color .2s, background .2s, color .2s; }
 .dn-amt:hover { border-color: currentColor; }
 .dn-amt[aria-pressed="true"] { background: var(--dn-ink, #1d1a17); border-color: var(--dn-ink, #1d1a17); color: var(--dn-bg, #fff); }
-.dn-feature { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 6px 16px; flex-wrap: wrap; min-height: 66px; padding: 10px 20px; border: 1.5px solid var(--dn-feature-line, #f6b860); background: var(--dn-feature-bg, #fff4e3); text-align: left; }
-.dn-feature b { font-size: 24px; font-weight: 600; letter-spacing: -.01em; }
+/* The foundation's own amount, across the whole row. Its button fills the box and lies under the amount and the
+   words beside it. The words are not inside the button, so that the site's editor can click and change them. */
+.dn-feature { grid-column: 1 / -1; position: relative; display: flex; align-items: center; justify-content: space-between; gap: 6px 16px; flex-wrap: wrap; min-height: 66px; padding: 10px 20px; }
+.dn-feature .dn-amt { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; border: 1.5px solid var(--dn-feature-line, #f6b860); background: var(--dn-feature-bg, #fff4e3); }
+.dn-feature .dn-amt:hover { border-color: var(--dn-feature-ink, #9a4a1a); }
+.dn-feature .dn-amt[aria-pressed="true"] { background: var(--dn-ink, #1d1a17); border-color: var(--dn-ink, #1d1a17); }
+.dn-feature b, .dn-feature .dn-note { position: relative; pointer-events: none; transition: color .2s; }
+.dn-feature b { font: 600 24px/1.25 var(--dn-sans, system-ui); letter-spacing: -.01em; }
+.dn-feature .dn-amt[aria-pressed="true"] ~ b { color: var(--dn-bg, #fff); }
 .dn-feature .dn-note { display: inline-flex; align-items: center; gap: 7px; font-size: 14.5px; font-weight: 600; color: var(--dn-feature-ink, #9a4a1a); }
-.dn-feature .dn-note::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--dn-feature-line, #f6b860); box-shadow: 0 0 0 4px rgba(246, 184, 96, .25); }
-.dn-feature:hover { border-color: var(--dn-feature-ink, #9a4a1a); }
-.dn-feature[aria-pressed="true"] .dn-note { color: var(--dn-feature-on, #ffd89a); }
-.dn-feature .dn-note[hidden] { display: none; }
+.dn-feature .dn-note::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--dn-feature-line, #f6b860); box-shadow: 0 0 0 4px rgba(246, 184, 96, .25); }
+.dn-feature .dn-amt[aria-pressed="true"] ~ .dn-note { color: var(--dn-feature-on, #ffd89a); }
+.dn-feature .dn-note[hidden], .dn-feature .dn-note:empty { display: none; }
+.dn-feature .dn-note[contenteditable="true"] { pointer-events: auto; }
 .dn-other { display: block; margin-top: 16px; }
 .dn-in { display: flex; align-items: center; min-height: 50px; margin-top: 8px; padding: 0 14px; border: 1px solid var(--dn-line, rgba(0, 0, 0, .15)); border-radius: var(--dn-chip-radius, 12px); transition: border-color .2s; }
 .dn-in:focus-within { border-color: currentColor; }
@@ -76,15 +90,41 @@ html:has(.dn[open]) { overflow: hidden; }
 .dn-go:hover { transform: translateY(-1px); filter: brightness(1.06); }
 .dn-go:disabled { opacity: .55; cursor: not-allowed; transform: none; filter: none; }
 .dn-go[aria-busy="true"] { cursor: progress; }
+.dn-terms { margin-top: 14px; font-size: 12.5px; line-height: 1.45; text-align: center; text-wrap: balance; color: var(--dn-muted, #6b6b6b); }
 .dn-fine { display: flex; justify-content: center; align-items: center; gap: 7px; margin-top: 14px; font-size: 12.5px; text-align: center; color: var(--dn-muted, #6b6b6b); }
+.dn-terms + .dn-fine { margin-top: 10px; }
 .dn-fine svg { flex: none; width: 13px; height: 13px; }
 .dn-done { text-align: center; padding: 10px 0 4px; }
 .dn-done .dn-title { margin-top: 6px; }
 .dn-done .dn-go { margin-top: 26px; }
+.dn-after { display: none; }
+/* Opened by the site's editor (shared/admin/bar.js), to have its wording changed: above the page but not as a
+   window over it, so that the editor's bar, whose height is --ed-bar, stays in reach under it. Both of its faces
+   are shown, the form and what follows a gift, and the buttons that close it are left out (the bar closes it). */
+.dn.dn-edit { position: fixed; inset: 12px 12px calc(var(--ed-bar, 64px) + 28px); z-index: 60; height: fit-content; max-height: calc(100dvh - var(--ed-bar, 64px) - 40px); border-radius: var(--dn-radius, 20px); box-shadow: 0 0 0 200vmax var(--dn-scrim, rgba(10, 10, 20, .55)); }
+.dn-edit .dn-card { max-height: calc(100dvh - var(--ed-bar, 64px) - 40px); }
+.dn-edit .dn-x, .dn-edit .dn-close { display: none; }
+.dn-edit .dn-after { display: block; margin: 22px 0 16px; padding-top: 16px; border-top: 1px dashed var(--dn-line, rgba(0, 0, 0, .15)); font-size: 12.5px; text-align: left; color: var(--dn-muted, #6b6b6b); }
+.dn-edit .dn-done { padding: 0 0 4px; }
 @media (max-width: 480px) {
   .dn-card { padding: 32px 20px 22px; }
   .dn-feature { padding: 10px 16px; }
   .dn-feature b { font-size: 22px; }
+}
+/* A short screen (a small phone, a phone with its browser's bars showing, a low laptop window): set closer, so
+   that the Donate button is on the screen without scrolling inside the box. */
+@media (max-height: 740px) {
+  .dn-card { padding-top: 24px; padding-bottom: 20px; }
+  .dn-title { margin: 6px 0; font-size: 30px; }
+  .dn-sub { font-size: 14px; line-height: 1.42; }
+  .dn-head { margin: 16px 0 8px; }
+  .dn-amt { min-height: 46px; }
+  .dn-feature { min-height: 56px; padding-top: 8px; padding-bottom: 8px; }
+  .dn-other { margin-top: 12px; }
+  .dn-in { min-height: 46px; }
+  .dn-in input { height: 44px; }
+  .dn-go { min-height: 52px; margin-top: 16px; }
+  .dn-terms, .dn-fine, .dn-terms + .dn-fine { margin-top: 10px; }
 }
 /* On a touch screen, iPhones zoom the whole page in when a field's text is under 16px. */
 @media (pointer: coarse) { .dn-cur select { font-size: 16px; } }
@@ -109,38 +149,49 @@ function build() {
     <div class="dn-card">
       <button class="dn-x" type="button" aria-label="Close">×</button>
       <div class="dn-form">
-        <p class="dn-k">Donate</p>
-        <h2 class="dn-title" id="dn-title">Make a gift</h2>
-        <p class="dn-sub">Your gift funds scholarships and peace education programs throughout the world.</p>
+        <p class="dn-k" ${EDITABLE}>Donate</p>
+        <h2 class="dn-title" id="dn-title" ${EDITABLE}>Make a gift</h2>
+        <p class="dn-sub" ${EDITABLE}>Your gift helps advance peace through education, scholarships, scientific research, and intelligent peace-building tools, creating a more peaceful, sustainable world.</p>
         <div class="dn-head">
-          <span class="dn-label" id="dn-amt-label">Choose an amount</span>
+          <span class="dn-label" id="dn-amt-label" ${EDITABLE}>Choose an amount</span>
           <span class="dn-cur"><select aria-label="Currency">${CURRENCIES.map((c) => `<option value="${c.code}">${c.code} ${c.symbol}</option>`).join('')}</select></span>
         </div>
         <div class="dn-amts" role="group" aria-labelledby="dn-amt-label">
-          <button class="dn-amt dn-feature" type="button" data-v="${SCHOLARSHIP.amount}" aria-pressed="false"><b></b> <span class="dn-note">${SCHOLARSHIP.note}</span></button>
+          <div class="dn-feature">
+            <button class="dn-amt" type="button" data-v="${SCHOLARSHIP.amount}" aria-pressed="false" aria-labelledby="dn-feature-amt"></button>
+            <b id="dn-feature-amt"></b>
+            <span class="dn-note" id="dn-note" ${EDITABLE}>${SCHOLARSHIP.note}</span>
+          </div>
           ${PRESETS.map((v) => `<button class="dn-amt" type="button" data-v="${v}" aria-pressed="false"></button>`).join('')}
         </div>
-        <label class="dn-other"><span class="dn-label">Or enter an amount</span>
+        <label class="dn-other"><span class="dn-label" ${EDITABLE}>Or enter an amount</span>
           <span class="dn-in"><i></i><input type="number" inputmode="decimal" step="0.01" min="0.5" placeholder="0.00"></span>
         </label>
         <p class="dn-err" role="alert" hidden></p>
         <button class="dn-go" type="button"></button>
-        <p class="dn-fine">${lock}<span>Secure checkout by Stripe: card, Apple Pay or Google Pay. Add your email there for a receipt.</span></p>
+        <p class="dn-terms" ${EDITABLE}>The Foundation determines how the contributions are allocated among its programs in furtherance of its charitable mission.</p>
+        <p class="dn-fine">${lock}<span ${EDITABLE}>Secure checkout by Stripe: card, Apple Pay or Google Pay. Add your email there for a receipt.</span></p>
       </div>
       <div class="dn-done" hidden>
-        <p class="dn-k">Thank you</p>
-        <h2 class="dn-title">Your gift is on its way.</h2>
-        <p class="dn-sub">Your donation was successful. We appreciate your support!</p>
+        <p class="dn-after">After a gift, the box shows this in place of everything above:</p>
+        <p class="dn-k" ${EDITABLE}>Thank you</p>
+        <h2 class="dn-title" ${EDITABLE}>Your gift is on its way.</h2>
+        <p class="dn-sub" ${EDITABLE}>Your donation was successful. We appreciate your support!</p>
         <button class="dn-go dn-close" type="button">Close</button>
       </div>
     </div>`;
   document.body.append(dlg);
+  // The box's wording joins the text the site's editor can change, and any saved change is laid over it now.
+  dlg.dispatchEvent(new CustomEvent('ccf:editable', { bubbles: true }));
+  dlg.addEventListener('close', () => { if (!dlg.open) dlg.classList.remove('dn-edit'); });
 
   ui = {
     form: dlg.querySelector('.dn-form'),
     done: dlg.querySelector('.dn-done'),
     select: dlg.querySelector('select'),
     chips: [...dlg.querySelectorAll('.dn-amt')],
+    feature: dlg.querySelector('.dn-feature .dn-amt'),
+    featureAmount: dlg.querySelector('.dn-feature b'),
     note: dlg.querySelector('.dn-feature .dn-note'),
     sym: dlg.querySelector('.dn-in i'),
     input: dlg.querySelector('.dn-in input'),
@@ -167,10 +218,12 @@ function amount() {
 
 function render() {
   ui.chips.forEach((b) => {
-    (b.querySelector('b') || b).textContent = cur.symbol + b.dataset.v;
+    (b === ui.feature ? ui.featureAmount : b).textContent = cur.symbol + b.dataset.v;
     b.setAttribute('aria-pressed', String(+b.dataset.v === preset));
   });
   ui.note.hidden = cur.code !== SCHOLARSHIP.currency;
+  // The words are read out with the amount while they are shown. (Hidden words named this way would still be read.)
+  if (ui.note.hidden) ui.feature.removeAttribute('aria-describedby'); else ui.feature.setAttribute('aria-describedby', 'dn-note');
   ui.sym.textContent = cur.symbol;
   ui.input.min = cur.min;
   const a = amount();
@@ -220,13 +273,28 @@ async function donate() {
   setBusy(false);
 }
 
-function open(view = 'form') {
+// editing: opened by the site's editor to have its wording changed (see .dn-edit in the styles above).
+function open(view = 'form', { editing = false } = {}) {
   if (!dlg) build();
-  ui.form.hidden = view !== 'form';
-  ui.done.hidden = view !== 'done';
+  if (dlg.open && dlg.classList.contains('dn-edit') !== editing) dlg.close();   // from one way of showing it to the other
+  dlg.classList.toggle('dn-edit', editing);
+  ui.form.hidden = !editing && view !== 'form';
+  ui.done.hidden = !editing && view !== 'done';
+  if (editing) {
+    if (!dlg.open) dlg.show();
+    if (dlg.contains(document.activeElement)) document.activeElement.blur();   // no text cursor until the editor clicks a line
+    render();
+    return;
+  }
   if (!dlg.open) dlg.showModal();
   (view === 'form' ? (ui.chips.find((b) => b.getAttribute('aria-pressed') === 'true') || ui.input) : dlg.querySelector('.dn-close')).focus();
 }
+
+// The site's editor asks for the box to be shown for editing, and to be put away again.
+document.addEventListener('ccf:donation-box', (e) => {
+  if (e.detail && e.detail.open) open('form', { editing: true });
+  else if (dlg && dlg.open) dlg.close();
+});
 
 document.addEventListener('click', (e) => {
   const trigger = e.target.closest('[data-donate]');

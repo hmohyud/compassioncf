@@ -150,7 +150,8 @@ function render() {
   bar.innerHTML = editing
     ? `<span class="edbar-msg">${status}</span>
        <button type="button" class="edbar-main" data-ed="save" ${!n || busy || preparing.size ? 'disabled' : ''}>${busy ? 'Saving…' : 'Save'}</button>
-       <button type="button" data-ed="cancel" ${busy ? 'disabled' : ''}>Cancel</button>`
+       <button type="button" data-ed="cancel" ${busy ? 'disabled' : ''}>Cancel</button>
+       ${hasBox() ? `<button type="button" data-ed="box" aria-pressed="${boxOpen()}">${boxOpen() ? 'Close the donation box' : 'Donation box'}</button>` : ''}`
     : `<span class="edbar-msg">${note ? `<b class="${noteKind}">${esc(note)}</b>` : `Editor: <b>${esc(who.email)}</b>`}</span>
        <button type="button" class="edbar-main" data-ed="edit">Edit this page</button>
        ${pageLinks()}
@@ -158,7 +159,29 @@ function render() {
        <a href="${ADMIN}#events">Events</a>
        <a href="${ADMIN}#inbox">Inbox</a>
        <button type="button" data-ed="out">Sign out</button>`;
+  document.documentElement.style.setProperty('--ed-bar', `${Math.round(bar.offsetHeight)}px`);   // the donation box, opened for editing, stays clear of the bar
 }
+
+/* ---------- the donation box ---------- */
+
+// The donation box is built by its own script (shared/donate.js) and opens as a window over the page, which
+// puts everything else, this bar included, out of reach. Asked from here it opens above the page instead, with
+// the bar still usable under it, and its wording is part of the text that can be clicked and changed.
+const hasBox = () => !!document.querySelector('[data-donate]');
+const boxOpen = () => !!document.querySelector('dialog.dn.dn-edit[open]');
+function showBox(open) {
+  if (open !== boxOpen()) document.dispatchEvent(new CustomEvent('ccf:donation-box', { detail: { open } }));
+  document.documentElement.classList.toggle('ed-box', boxOpen());
+  render();
+}
+// The box's wording joins the page's text when the box is first built, which may be after editing has begun.
+document.addEventListener('ccf:text-added', (e) => {
+  if (!editing) return;
+  for (const entry of e.detail.entries) {
+    entry.el.setAttribute('contenteditable', 'true');
+    entry.el.setAttribute('spellcheck', 'true');
+  }
+});
 
 function say(text, kind = '') {
   note = text;
@@ -194,6 +217,8 @@ function stop() {
   focused = null;
   pop.hidden = true;
   closePhoto();
+  if (boxOpen()) document.dispatchEvent(new CustomEvent('ccf:donation-box', { detail: { open: false } }));
+  document.documentElement.classList.remove('ed-box');
   document.documentElement.classList.remove('ed-on');
   for (const entry of entries) {
     entry.el.removeAttribute('contenteditable');
@@ -484,6 +509,7 @@ bar.addEventListener('click', (e) => {
   if (action === 'edit') start();
   if (action === 'cancel') cancel();
   if (action === 'save') save();
+  if (action === 'box' && editing) showBox(!boxOpen());
   if (action === 'out') { if (editing) cancel(); session.signOut(); }
 });
 
@@ -528,12 +554,14 @@ document.addEventListener('paste', (e) => {
   document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text/plain'));
 });
 // While editing, a photo is something to swap, and links and buttons are text to change, not things to follow.
+// (A label is in the list because a click on its words would otherwise move the cursor into the field it names:
+// the donation box has one.)
 document.addEventListener('click', (e) => {
   if (!editing || bar.contains(e.target) || pop.contains(e.target) || photo.contains(e.target) || e.target === chooser) return;
   const picture = photoAt(e.target);
   if (picture) { e.preventDefault(); e.stopPropagation(); onPhoto(picture); return; }
   if (photoOf) closePhoto();
-  if (e.target.closest('a, button, [data-donate], summary')) { e.preventDefault(); e.stopPropagation(); }
+  if (e.target.closest('a, button, label, [data-donate], summary')) { e.preventDefault(); e.stopPropagation(); }
 }, true);
 window.addEventListener('beforeunload', (e) => { if (editing && (changes().length || photoChanges().length || preparing.size)) { e.preventDefault(); e.returnValue = ''; } });
 window.addEventListener('scroll', () => { placePop(); placePhoto(); }, { passive: true });

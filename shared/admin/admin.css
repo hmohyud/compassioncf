@@ -16,6 +16,9 @@
 .edbar .edbar-main:hover:not(:disabled) { color: #3a1a0c; filter: brightness(1.06); }
 .edbar button:disabled { opacity: .5; cursor: default; }
 .edbar.editing { border-radius: 22px; }
+.edbar [data-ed="box"][aria-pressed="true"] { color: var(--gold); }
+/* While the donation box is open for editing (it sits above the page, dimming it), the bar stays above that. */
+html.ed-box .edbar { z-index: 70; }
 @media (max-width: 640px) {
   .edbar { bottom: 12px; width: auto; border-radius: 20px; padding: 10px 14px; }
   .edbar-msg { flex-basis: 100%; text-align: center; margin: 0; }
@@ -28,6 +31,8 @@
 .ed-on [contenteditable="true"]:focus { outline: 2px solid #e0703a; background: rgba(255, 216, 154, .14); }
 .ed-on [contenteditable="true"].ed-changed { outline: 2px solid #2f9e6b; }
 .ed-on a[contenteditable="true"] { transform: none !important; }
+/* the words beside the donation box's first amount: if they are emptied while editing, they stay clickable */
+.ed-on .dn-feature .dn-note[contenteditable="true"]:empty { display: inline-flex; min-width: 9em; min-height: 1.3em; }
 .ed-pop { position: absolute; z-index: 190; padding: 5px 12px; border: 0; border-radius: 999px; font: 600 12px var(--sans); color: #fff; background: #2f6b4f; box-shadow: 0 6px 16px -6px rgba(0, 0, 0, .5); cursor: pointer; }
 .ed-pop:hover { background: #245a41; }
 .ed-pop[hidden] { display: none; }

@@ -305,6 +305,30 @@ export let datesOff = parseList(JSON.stringify(readCache(DATES_CACHE).names || [
 apply(edits);
 applyImages(images);
 
+/* ---------- wording a script puts on the page ---------- */
+
+// The donation box (shared/donate.js) is built by its own script, outside <main>, so its words are not in the
+// list of this page's text. A script marks each piece of wording that may be changed with
+// data-editable="<what it is part of>" and announces it with a "ccf:editable" event. The pieces then join the
+// list and behave like any other text: a saved change is laid over them, and the editor can click and change
+// them. What a piece is part of goes into its key, so the donation box's "Donate" is a different line from the
+// footer's "Donate": changing one never changes the other.
+export function adopt(root = document) {
+  const added = [];
+  for (const el of root.querySelectorAll('[data-editable]')) {
+    if (entries.some((entry) => entry.el === el)) continue;
+    const original = el.innerHTML;
+    added.push({ el, original, key: keyFor(`${el.dataset.editable}\n${normalize(original)}`), edited: false });
+  }
+  if (!added.length) return added;
+  entries.push(...added);
+  apply(edits);
+  document.dispatchEvent(new CustomEvent('ccf:text-added', { detail: { entries: added } }));   // the editor, if it is open, makes them editable
+  return added;
+}
+document.addEventListener('ccf:editable', (e) => adopt(e.target instanceof Element ? e.target : document));
+adopt();
+
 // Used by the editor after it saves: show the new set of changes and keep it for the next visit.
 export function setEdits(next) {
   edits = next;
