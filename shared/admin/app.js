@@ -2,7 +2,7 @@
 // and see the wording changed on the pages. Everything is read from and saved to the site's own
 // database as the signed-in person (see session.js); the page itself holds no content.
 //
-// Sections follow the address: #essays, #essays/new, #essays/<id>, #events…, #inbox, #newsletter, #text.
+// Sections follow the address: #essays, #essays/new, #essays/<id>, #events…, #inbox, #newsletter, #text, #people.
 
 import * as session from './session.js';
 import { markdown, splitTitle, toDate, lastDay, PUBLISHED_SITE } from '../cms.js';
@@ -13,7 +13,12 @@ const root = document.querySelector('[data-admin-app]');
 const SITE = new URL('../../', import.meta.url).href;
 document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: new URL('./admin.css', import.meta.url).href }));
 
-const TABS = [['essays', 'Essays'], ['events', 'Events'], ['inbox', 'Inbox'], ['newsletter', 'Mailing list'], ['text', 'Text and photos']];
+const TABS = [['essays', 'Essays'], ['events', 'Events'], ['inbox', 'Inbox'], ['newsletter', 'Mailing list'], ['text', 'Text and photos'], ['people', 'People']];
+// The keepers of the list of editors: always editors themselves, and the ones who can add and remove others.
+// The database's rules name them by their Google addresses, which are kept out of this repository; this is
+// only how the editor refers to them, and has to be changed together with the rules.
+const KEEPERS = ['Thom Bond', 'Debra Chew', 'Hyder Mohyuddin'];
+const keepers = (last) => `${KEEPERS.slice(0, -1).join(', ')} ${last} ${KEEPERS[KEEPERS.length - 1]}`;
 // Notes in the inbox that came from somewhere other than the Contact page, by their subject line.
 // "Volunteer sign-up" is from the volunteer page the site used to have; "Mailing list sign-up" is what
 // shared/forms.js sends when the database won't keep a name and place beside a mailing-list address.
@@ -65,7 +70,7 @@ function notAnEditor(email) {
     <div class="adm-card adm-sign">
       <h2>This account can’t edit the site</h2>
       <p><b>${esc(email)}</b> is signed in, but it isn’t on the list of people who may edit this site.</p>
-      <p>If it should be, ask the person who looks after the website to add it. If you have another Google account that is on the list, sign out and choose that one.</p>
+      <p>If it should be, ask ${esc(keepers('or'))} to add this exact address in the editor, under “People”. If you have another Google account that is on the list, sign out and choose that one.</p>
       <p><button type="button" class="btn btn-ink" data-act="out">Sign out</button></p>
     </div>`;
 }
@@ -537,7 +542,54 @@ async function undoPhoto(key) {
   route();
 }
 
-const SECTIONS = { essays, events, inbox, newsletter, text };
+/* ---------- who can edit ---------- */
+
+// The list the keepers look after: one record per person, named by their Google address in lower case.
+async function whoCanEdit() {
+  loading('Loading the list…');
+  const [found, manage] = await Promise.all([session.list('editors'), session.mayManage()]);
+  const added = found.map((p) => ({ ...p, email: words(p.email || p.id), name: words(p.name), addedBy: words(p.addedBy), when: toDate(p.addedAt) }))
+    .sort((a, b) => (a.when || 0) - (b.when || 0));
+  const row = (p) => `
+      <li class="adm-mail"><span><b>${esc(p.email)}</b><span class="adm-sub">${esc([p.name, p.addedBy ? `Added by ${p.addedBy}` : '', longDate(p.when)].filter(Boolean).join(' · '))}</span></span>
+        ${manage ? `<button type="button" class="adm-danger sm" data-del="editors/${esc(encodeURIComponent(p.id))}" data-after="#people" data-done="Removed. ${esc(p.email)} can no longer edit the site.">Remove</button>` : ''}</li>`;
+  view().innerHTML = `
+    ${takeFlash()}
+    <div class="adm-head"><div><h2>People</h2>
+      <p>Who can sign in here and edit the site. Everyone on the list can change the pages, essays and events, and can see the mailing list and the old contact messages.</p></div></div>
+    <h3 class="adm-group">Always on the list</h3>
+    <p class="adm-hint">${esc(keepers('and'))}. They look after this list: only they can add someone to it or take someone off it.</p>
+    <h3 class="adm-group">Added</h3>
+    ${added.length ? `<ul class="adm-list">${added.map(row).join('')}</ul>` : '<p class="adm-empty">Nobody else yet.</p>'}
+    ${manage ? `
+    <form class="adm-edit form adm-add" data-form="person">
+      <h3 class="adm-group">Add a person</h3>
+      <div class="form-row">
+        <div class="field"><label for="p-email">Their Google address <small>(the address they sign in to Google with, such as a Gmail address)</small></label><input id="p-email" name="email" type="email" required maxlength="200" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+        <div class="field"><label for="p-name">Name <small>(optional)</small></label><input id="p-name" name="name" maxlength="120" autocomplete="off"></div>
+      </div>
+      <div class="adm-actions">
+        <button class="btn btn-sun" type="submit">Add to the list</button>
+        <span class="adm-note" data-note role="status"></span>
+      </div>
+    </form>` : `<p class="adm-hint">To add or remove someone, ask ${esc(keepers('or'))}.</p>`}`;
+}
+
+async function savePerson(form) {
+  const email = form.elements.email.value.trim().toLowerCase();
+  const name = form.elements.name.value.replace(/\s+/g, ' ').trim();
+  if (!isPlainAddress(email)) throw new session.Fail('other', 'That doesn’t look like an email address. Type the whole address, like name@gmail.com.');
+  try {
+    await session.createNamed('editors', email, { email, ...(name ? { name } : {}), addedBy: (session.current()?.email || '').toLowerCase(), addedAt: new Date() });
+  } catch (err) {
+    if (err.kind === 'exists') throw new session.Fail('other', `${email} is already on the list.`);
+    throw err;
+  }
+  flash = `Added. ${email} can now sign in here with that Google account and edit the site.`;
+  return go('#people');
+}
+
+const SECTIONS = { essays, events, inbox, newsletter, text, people: whoCanEdit };
 
 /* ---------- wiring ---------- */
 
@@ -570,7 +622,7 @@ async function attempt(button, work) {
 root.addEventListener('submit', (e) => {
   e.preventDefault();
   const form = e.target;
-  const save = { essay: saveEssay, event: saveEvent }[form.dataset.form];
+  const save = { essay: saveEssay, event: saveEvent, person: savePerson }[form.dataset.form];
   if (save) attempt(form.querySelector('button[type="submit"]'), async () => { const done = await save(form); dirty = false; return done; });
 });
 
@@ -593,7 +645,7 @@ root.addEventListener('click', (e) => {
 
   const del = e.target.closest('[data-del]');
   if (del && confirmTwice(del)) {
-    const [collection, id] = del.dataset.del.split('/');
+    const [collection, id] = del.dataset.del.split('/').map(decodeURIComponent);
     attempt(del, async () => { await session.remove(collection, id); flash = del.dataset.done; go(del.dataset.after); });
   }
 

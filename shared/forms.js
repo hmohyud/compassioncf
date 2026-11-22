@@ -30,6 +30,8 @@
 // Since 17 November 2026 HOME is the site's own project, which the editor's Inbox and Mailing list
 // read. Until 19 November 2026 a copy also went to the foundation's earlier project; nothing there
 // used it, so ALSO is empty now and a submission goes to one place only.
+import { t } from './i18n.js';   // replies in the visitor's language
+
 const database = (project) => `https://firestore.googleapis.com/v1/projects/${project}/databases/(default)/documents`;
 const HOME = database('compassioncf-editor');
 const ALSO = [];
@@ -38,8 +40,8 @@ const LIMITS = { name: 120, email: 200, location: 120 };
 const MAILING_LIST = 'Mailing list sign-up';   // shared/admin/app.js labels these notes in the inbox
 
 const COPY = {
-  newsletter: 'Thank you. You’re on the list.',
-  failed: 'Sorry, that didn’t go through. Please try again in a moment.',
+  newsletter: () => t('Thank you. You’re on the list.'),
+  failed: () => t('Sorry, that didn’t go through. Please try again in a moment.'),
 };
 
 function encode(value) {
@@ -105,10 +107,12 @@ function mount(form) {
   const button = form.querySelector('button[type="submit"], button:not([type])');
   if (!READ[kind] || !msg || !button) return;
 
-  // A field people never see. Scripts that fill in everything give themselves away by filling it.
+  // A field people never see. Scripts that fill in everything give themselves away by filling it. It is hidden
+  // where it stands, not moved far off to one side: on a page written from right to left, something far off to
+  // the left makes the whole page scroll sideways.
   const trap = Object.assign(document.createElement('input'), { type: 'text', name: 'website', tabIndex: -1, autocomplete: 'off' });
   trap.setAttribute('aria-hidden', 'true');
-  trap.style.cssText = 'position:absolute;left:-9999px;width:1px;height:1px;opacity:0';
+  trap.style.cssText = 'position:absolute;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);opacity:0;pointer-events:none';
   form.append(trap);
 
   const say = (text, state) => {
@@ -125,16 +129,16 @@ function mount(form) {
     const label = button.textContent;
     sending = true;
     button.disabled = true;
-    button.textContent = 'Sending…';
+    button.textContent = t('Sending…');
     form.classList.add('sending');
     say('');
     try {
       if (!trap.value) await save(kind, field);
       form.reset();
-      say(COPY[kind], 'ok');
+      say(COPY[kind](), 'ok');
     } catch (err) {
       console.warn(`[forms] ${kind} not saved:`, err.message);
-      say(COPY.failed, 'err'); // the form keeps what was typed
+      say(COPY.failed(), 'err'); // the form keeps what was typed
     }
     sending = false;
     button.disabled = false;

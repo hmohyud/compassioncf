@@ -115,6 +115,7 @@ a.adm-row:hover .adm-title { color: #d0664c; }
 
 .adm-edit { display: grid; gap: 18px; }
 .adm-edit .form-row { grid-template-columns: 1fr 1fr; }
+.adm-add .form-row { align-items: end; }   /* the two boxes line up even when one label takes two lines */
 .adm-edit .field select { width: 100%; padding: 14px 18px; border-radius: 14px; border: 1px solid rgba(20, 26, 68, .15); background: #fdfaf6; font: 16px/1.5 var(--sans); color: var(--text); }
 .adm-edit textarea.adm-text { min-height: 420px; font: 15px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .adm-check { display: flex; align-items: center; gap: 10px; font: 500 15px var(--sans); color: var(--ink); cursor: pointer; }

@@ -16,6 +16,8 @@
 // Its wording can be changed in the site's editor: "Edit this page", then "Donation box" in the editor's bar
 // (see EDITABLE below, and "wording a script puts on the page" in shared/content.js).
 
+import { t, ready as wordsReady } from './i18n.js';   // the box in the visitor's language
+
 const CHECKOUT_FN = 'https://us-central1-compassioncf-editor.cloudfunctions.net/createDonationCheckout';
 const LIVE_PAGE = 'https://compassioncf.com/donate';
 // While this site is still at its preview address, a failed call can point people to the donate
@@ -168,12 +170,12 @@ function build() {
           <span class="dn-in"><i></i><input type="number" inputmode="decimal" step="0.01" min="0.5" placeholder="0.00"></span>
         </label>
         <p class="dn-err" role="alert" hidden></p>
-        <button class="dn-go" type="button"></button>
+        <button class="dn-go" type="button" data-no-translate></button>
         <p class="dn-terms" ${EDITABLE}>The Foundation determines how the contributions are allocated among its programs in furtherance of its charitable mission.</p>
         <p class="dn-fine">${lock}<span ${EDITABLE}>Secure checkout by Stripe: card, Apple Pay or Google Pay. Add your email there for a receipt.</span></p>
       </div>
       <div class="dn-done" hidden>
-        <p class="dn-after">After a gift, the box shows this in place of everything above:</p>
+        <p class="dn-after" data-no-translate>After a gift, the box shows this in place of everything above:</p>
         <p class="dn-k" ${EDITABLE}>Thank you</p>
         <h2 class="dn-title" ${EDITABLE}>Your gift is on its way.</h2>
         <p class="dn-sub" ${EDITABLE}>Your donation was successful. We appreciate your support!</p>
@@ -208,6 +210,7 @@ function build() {
   ui.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); donate(); } });
   ui.go.addEventListener('click', donate);
   render();
+  wordsReady.then(render);   // the button's words again, once the visitor's language has been read
 }
 
 function amount() {
@@ -227,7 +230,7 @@ function render() {
   ui.sym.textContent = cur.symbol;
   ui.input.min = cur.min;
   const a = amount();
-  if (!busy) ui.go.textContent = a ? `Donate ${cur.symbol}${fmt(a)}` : 'Donate';
+  if (!busy) ui.go.textContent = a ? t('Donate {amount}', { amount: `${cur.symbol}${fmt(a)}` }) : t('Donate');
   ui.go.disabled = busy || !a;
 }
 
@@ -243,13 +246,13 @@ function error(msg, withLink) {
 function setBusy(on) {
   busy = on;
   ui.go.setAttribute('aria-busy', String(on));
-  if (on) ui.go.textContent = 'Opening secure checkout…';
+  if (on) ui.go.textContent = t('Opening secure checkout…');
   render();
 }
 
 async function donate() {
   const a = amount();
-  if (!a || a < cur.min) return error(`Please choose or enter at least ${cur.symbol}${fmt(cur.min)}.`);
+  if (!a || a < cur.min) return error(t('Please choose or enter at least {amount}.', { amount: `${cur.symbol}${fmt(cur.min)}` }));
   error();
   setBusy(true);
   try {
@@ -263,12 +266,12 @@ async function donate() {
     if (res.ok && url) { window.location.href = url; return; }
     const status = body?.error?.status || '';
     const message = body?.error?.message || '';
-    if (status === 'UNAVAILABLE') error('The payment service is temporarily unavailable. Please try again in a moment.', true);
-    else if (status === 'PERMISSION_DENIED') error('Online payments aren’t set up for this page yet.', true);
+    if (status === 'UNAVAILABLE') error(t('The payment service is temporarily unavailable. Please try again in a moment.'), true);
+    else if (status === 'PERMISSION_DENIED') error(t('Online payments aren’t set up for this page yet.'), true);
     else if (message && !/internal/i.test(message)) error(message, true);
-    else error('We couldn’t start the payment. Please try again.', true);
+    else error(t('We couldn’t start the payment. Please try again.'), true);
   } catch {
-    error('We couldn’t reach the payment service from this page.', true);
+    error(t('We couldn’t reach the payment service from this page.'), true);
   }
   setBusy(false);
 }
@@ -312,7 +315,7 @@ if (params.get('success') === 'true' || params.get('canceled') === 'true') {
   const ok = params.get('success') === 'true';
   history.replaceState({}, '', location.pathname + location.hash);
   open(ok ? 'done' : 'form');
-  if (!ok) error('Payment was canceled. You can try again anytime.');
+  if (!ok) error(t('Payment was canceled. You can try again anytime.'));
 } else if (location.hash === '#donate' || document.querySelector('[data-donate-auto]')) {
   open();
 }

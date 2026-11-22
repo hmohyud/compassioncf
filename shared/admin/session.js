@@ -1,9 +1,11 @@
 // Sign-in and database access for the site's editors.
 //
 // Editors sign in with Google. The sign-in service is Firebase Authentication in the site's own
-// project, compassioncf-editor. Who may edit is not decided here: the project's database rules hold
-// the list of Google addresses that may, and refuse everyone else. This file signs a person in,
-// keeps them signed in on this browser, and sends their requests with proof of who they are.
+// project, compassioncf-editor. Who may edit is not decided here: the project's database rules decide,
+// and refuse everyone else. They name a few people, the keepers of the list, who are always editors,
+// and they let those people keep a list of further editors in the database itself (the editor's
+// "People" page). This file signs a person in, keeps them signed in on this browser, and sends their
+// requests with proof of who they are.
 //
 // The project's public web settings are not written into this repository. They are read, when the
 // sign-in screen opens, from a small settings file the project publishes at its own address.
@@ -22,7 +24,7 @@ const EDITOR_STORE = 'ccf-editor-ok';
 // the database itself (see "photos" below): the site's project has no file storage on its plan.
 export const PHOTO_SWAPS = true;
 
-// kind: 'cancelled' | 'blocked' | 'network' | 'denied' | 'missing' | 'expired' | 'settings' | 'other'
+// kind: 'cancelled' | 'blocked' | 'network' | 'denied' | 'missing' | 'exists' | 'expired' | 'settings' | 'other'
 export class Fail extends Error {
   constructor(kind, message, detail = '') {
     super(message);
@@ -208,8 +210,8 @@ function claims(idToken) {
   }
 }
 
-// Whether the signed-in person is on the list of editors. The database's rules hold that list, so the
-// question is put to the database itself: only an editor is allowed to look at the inbox.
+// Whether the signed-in person may edit. The database's rules decide that, so the question is put to the
+// database itself: only an editor is allowed to look at the inbox.
 export async function mayEdit() {
   const s = session();
   if (!s) return false;
@@ -225,9 +227,24 @@ export async function mayEdit() {
   return ok;
 }
 
+// Whether the signed-in person is one of the keepers of the list of editors, who can add and remove people.
+// The rules let only a keeper ask for the record "keepers/me". Nothing is kept there: a keeper is told it
+// doesn't exist, and anyone else is refused.
+export async function mayManage() {
+  try {
+    await call('keepers/me', {}, false, true);
+    return true;
+  } catch (err) {
+    if (err.kind === 'missing') return true;
+    if (err.kind === 'denied') return false;
+    throw err;
+  }
+}
+
 /* ---------- the database, as the signed-in person ---------- */
 
-async function call(path, { method = 'GET', query = '', body } = {}, retried = false) {
+// `asking` marks a request made only to learn what the rules allow: a refusal is then an answer, not news.
+async function call(path, { method = 'GET', query = '', body } = {}, retried = false, asking = false) {
   const idToken = await token();
   const { res, body: answer } = await request(`${DB}/${path}${query ? `?${query}` : ''}`, {
     method,
@@ -236,13 +253,19 @@ async function call(path, { method = 'GET', query = '', body } = {}, retried = f
   });
   if (res.status === 401 && !retried) {
     await token(true);
-    return call(path, { method, query, body }, true);
+    return call(path, { method, query, body }, true, asking);
   }
   if (res.ok) return answer;
   const detail = `${answer?.error?.status || `HTTP ${res.status}`}${answer?.error?.message ? `: ${answer.error.message}` : ''}`;
   if (res.status === 401) { signOut(); throw new Fail('expired', 'Your sign-in has ended. Please sign in again.', detail); }
-  if (res.status === 403) throw new Fail('denied', 'The database refused that. This account may not have permission for it.', detail);
+  if (res.status === 403) {
+    // Someone taken off the list of editors is refused from that moment on: forget that this browser was told
+    // they may edit, so the next screen asks the database again.
+    if (!asking) { try { sessionStorage.removeItem(EDITOR_STORE); } catch { /* private window */ } }
+    throw new Fail('denied', 'The database refused that. This account may not have permission for it.', detail);
+  }
   if (res.status === 404) throw new Fail('missing', 'That item no longer exists.', detail);
+  if (res.status === 409) throw new Fail('exists', 'That is already there.', detail);
   throw new Fail('other', 'The database couldn’t do that. Try again in a moment.', detail);
 }
 
@@ -288,6 +311,12 @@ export async function get(collection, id) {
 
 export async function create(collection, data) {
   return toDoc(await call(collection, { method: 'POST', body: { fields: encodeFields(data) } }));
+}
+
+// Adds a record under a name chosen here. If one with that name is already there, nothing is changed and the
+// failure's kind is 'exists'.
+export async function createNamed(collection, id, data) {
+  return toDoc(await call(collection, { method: 'POST', query: `documentId=${encodeURIComponent(id)}`, body: { fields: encodeFields(data) } }));
 }
 
 // A change request that names no fields would replace the whole document with nothing. Never send one.

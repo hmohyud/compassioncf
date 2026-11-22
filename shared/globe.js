@@ -9,6 +9,7 @@
 
 import * as THREE from './vendor/three.module.min.js';
 import { CLUSTERS } from './clusters.js';
+import { t, ready as wordsReady } from './i18n.js';
 
 const PI = Math.PI;
 const AUTO_SELECT_INTERVAL = 5000;
@@ -83,6 +84,7 @@ export function mountGlobe(host, opts = {}) {
   host.appendChild(wrap);
   const earthCanvas = wrap.querySelector('.g-earth');
   const cloudCanvas = wrap.querySelector('.g-clouds');
+  wordsReady.then(() => cloudCanvas.setAttribute('aria-label', t('Interactive globe of Compassion Course participants. Drag to spin.')));
   const stem = wrap.querySelector('.g-stem');
   const stemLine = stem.querySelector('line');
   const stemDot = stem.querySelector('circle');
@@ -112,13 +114,17 @@ export function mountGlobe(host, opts = {}) {
     stemDot.setAttribute('stroke', tip.behind ? `rgba(${o.marker},0.5)` : 'white');
     stemDot.setAttribute('stroke-width', tip.behind ? 1 : 1.5);
   }
-  function showTip(idx, x, y) {
+  function tipWords(idx) {
     const [, , count, names] = CLUSTERS[idx];
-    tipEl.querySelector('b').textContent = (names[0] || 'This region') + (names.length > 1 ? ` +${names.length - 1} more` : '');
-    tipEl.querySelector('span').textContent = `${count} participant${count !== 1 ? 's' : ''} in this area`;
+    tipEl.querySelector('b').textContent = (names[0] || t('This region')) + (names.length > 1 ? ` ${t('+{n} more', { n: names.length - 1 })}` : '');
+    tipEl.querySelector('span').textContent = count === 1 ? t('1 participant in this area') : t('{count} participants in this area', { count });
+  }
+  function showTip(idx, x, y) {
+    tipWords(idx);
     Object.assign(tip, { visible: true, idx, x, y, behind: false });
     renderTip();
   }
+  wordsReady.then(() => { if (tip.idx >= 0) tipWords(tip.idx); });   // a label shown before the visitor's language was read
   function hideTip() { if (tip.visible) { tip.visible = false; tip.idx = -1; renderTip(); } }
 
   // --- three setup ---

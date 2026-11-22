@@ -4,6 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>(function(){try{var d=document.documentElement,m=/[?&]lang=([A-Za-z]{2})/.exec(location.search),l=(m?m[1]:localStorage.getItem("ccf-lang")||"").toLowerCase().slice(0,2);if(/^[a-z]{2}$/.test(l)&&l!=="en"){d.lang=l;if(l==="ar"||l==="he")d.dir="rtl";d.classList.add("i18n-wait");setTimeout(function(){d.classList.remove("i18n-wait")},3000)}}catch(e){}})()</script>
   <title>Programs — Compassion Course Foundation</title>
   <meta name="description" content="The Peace Engineering Scholarship Fund, the Global Peace Education Research Initiative, the Archive Program and the Global Human Needs Observatory.">
   <link rel="icon" href="../shared/img/mark.png">
@@ -11,6 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=DM+Sans:opsz,wght@9..40,400..700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../style.css">
+  <link rel="modulepreload" href="../shared/i18n.js">
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -28,6 +30,10 @@
         <a href="../news/">News and Updates</a>
         <a href="../contact/">Contact</a>
         <a class="btn btn-sun sm" href="../donate/" data-donate>Donate</a>
+        <div class="lang" data-lang-menu data-no-translate>
+          <span class="lang-now" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.7 3 2.7 15 0 18M12 3c-2.7 3-2.7 15 0 18"/></svg><b data-lang-now>English</b><i></i></span>
+          <select aria-label="Language"><option value="en" selected>English</option></select>
+        </div>
       </nav>
     </div>
   </header>

@@ -4,6 +4,8 @@
 // - header gets .scrolled after leaving the top
 // - [data-nav-toggle] opens/closes the mobile menu
 
+import { locale, translated, shown } from './i18n.js';   // numbers are written the way the visitor's language writes them
+
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const io = new IntersectionObserver((entries) => {
@@ -26,7 +28,7 @@ document.head.append(countCss);
 
 async function countUp(el) {
   const end = Number(el.dataset.count);
-  const fmt = (n) => Math.round(n).toLocaleString('en-US');
+  const fmt = (n) => Math.round(n).toLocaleString(locale);
   el.textContent = fmt(end);
   if (reduced) return;
   await document.fonts.ready; // measure in the real font, not the fallback
@@ -67,3 +69,32 @@ document.querySelectorAll('[data-nav-toggle]').forEach((btn) => {
 });
 
 document.querySelectorAll('[data-year]').forEach((el) => { el.textContent = new Date().getFullYear(); });
+
+// In another language the menu's words can be longer than the bar is wide, on a screen just wider than a tablet.
+// When they are, the page is marked "nav-tight" and the stylesheet gives it the menu a phone has. English always
+// fits, so this is not done in English.
+if (translated && header) {
+  const bar = header.querySelector('.hdr-in'), brand = bar && bar.querySelector('.brand'), nav = bar && bar.querySelector('.nav');
+  const wide = window.matchMedia('(min-width: 961px)');
+  let needed = 0;   // the room the name and the menu take side by side, measured while they are side by side
+  const measure = () => {
+    if (!wide.matches || document.documentElement.classList.contains('nav-tight')) return;
+    const copy = nav.cloneNode(true);   // measured on a copy laid out on one line, whatever room the real one has
+    copy.removeAttribute('id');
+    copy.setAttribute('aria-hidden', 'true');
+    copy.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;flex:none;width:max-content;white-space:nowrap';
+    bar.append(copy);
+    needed = brand.offsetWidth + copy.offsetWidth + 28;
+    copy.remove();
+  };
+  const fit = () => {
+    if (!needed) measure();
+    const edges = getComputedStyle(bar);
+    const room = bar.clientWidth - parseFloat(edges.paddingLeft) - parseFloat(edges.paddingRight);
+    document.documentElement.classList.toggle('nav-tight', wide.matches && needed > 0 && needed > room);
+  };
+  if (bar && brand && nav) {
+    shown.then(() => { fit(); document.fonts.ready.then(() => { if (!document.documentElement.classList.contains('nav-tight')) { needed = 0; fit(); } }); });
+    window.addEventListener('resize', fit, { passive: true });
+  }
+}

@@ -37,7 +37,7 @@ if (frame && clip) {
   };
 
   let heard = false;
-  window.addEventListener('message', (e) => {
+  const said = (e) => {
     if (!fromForm(e) || typeof e.data !== 'string') return;
     const [what, value] = e.data.split(':');
     if (what === 'setHeight') {
@@ -49,7 +49,14 @@ if (frame && clip) {
     } else if (what === 'scrollIntoView') {
       reveal();
     }
-  });
+  };
+  window.addEventListener('message', said);
+  // A form that loads quickly can say how tall it is before this script has started. The page keeps what the
+  // frame says from the start (a line written just before the frame, see JOTFORM_EARLY in tools/build_pages.py);
+  // it is read here first, with the same checks, and from now on this script listens by itself.
+  const early = Array.isArray(window.ccfHeard) ? window.ccfHeard : [];
+  window.ccfHeard = null;
+  early.forEach(said);
 
   // A new page in the frame while the visitor is in the form: its thank-you note, or the form again.
   frame.addEventListener('load', () => { if (document.activeElement === frame) reveal(); });

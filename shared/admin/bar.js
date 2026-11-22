@@ -8,6 +8,7 @@ import {
 } from '../content.js';
 import * as session from './session.js';
 import { ORIGINALS } from './originals.js';
+import { lang } from '../i18n.js';
 
 // The photos an editor may change (see PHOTO_SWAPS in session.js).
 const imageEntries = session.PHOTO_SWAPS ? photosOnThePage : [];
@@ -210,6 +211,17 @@ function start() {
   placeTags();
   setTimeout(placeTags, 900);   // again once the page's reveal animations have settled
   render();
+}
+
+// The site's wording is written in English, so that is the language it is edited in. Asked for on a page being
+// read in another language, editing opens the same page in English and starts there.
+const EDIT_NEXT = 'ccf-edit-next';
+function startInEnglish() {
+  if (lang === 'en') return start();
+  try { sessionStorage.setItem(EDIT_NEXT, '1'); } catch { /* private window: the page still opens in English */ }
+  const url = new URL(location.href);
+  url.searchParams.set('lang', 'en');
+  location.assign(url);
 }
 
 function stop() {
@@ -506,7 +518,7 @@ photo.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === 'E
 
 bar.addEventListener('click', (e) => {
   const action = e.target.closest('[data-ed]')?.dataset.ed;
-  if (action === 'edit') start();
+  if (action === 'edit') startInEnglish();
   if (action === 'cancel') cancel();
   if (action === 'save') save();
   if (action === 'box' && editing) showBox(!boxOpen());
@@ -571,6 +583,9 @@ document.addEventListener('load', (e) => { if (editing && e.target.tagName === '
 session.onChange(() => { if (!session.current() && editing) cancel(); render(); });
 
 render();
+try {
+  if (sessionStorage.getItem(EDIT_NEXT)) { sessionStorage.removeItem(EDIT_NEXT); if (lang === 'en') start(); }   // asked for on this page in another language
+} catch { /* private window */ }
 session.mayEdit().then((ok) => {
   if (ok || !session.current()) return;
   bar.innerHTML = `<span class="edbar-msg"><b class="bad">${esc(session.current().email)} is signed in but isn’t on the list of editors.</b></span><button type="button" data-ed="out">Sign out</button>`;

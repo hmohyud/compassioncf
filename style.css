@@ -60,6 +60,16 @@ em { font-style: italic; }
 .burger span:first-child { top: 15px; } .burger span:last-child { top: 23px; }
 .burger[aria-expanded="true"] span:first-child { transform: translateY(4px) rotate(45deg); }
 .burger[aria-expanded="true"] span:last-child { transform: translateY(-4px) rotate(-45deg); }
+/* The language menu (shared/i18n.js): the device's own list of languages, laid invisibly over a label that
+   shows the current one. */
+.lang { position: relative; display: inline-flex; align-items: center; border: 1px solid rgba(255,255,255,.28); border-radius: 999px; color: rgba(255,255,255,.86); font-size: 14px; line-height: 1; white-space: nowrap; transition: border-color .25s, background .25s, color .25s; }
+.lang:hover, .lang:focus-within { border-color: rgba(255,255,255,.6); background: rgba(255,255,255,.08); color: #fff; }
+.lang:focus-within { outline: 2px solid var(--amber); outline-offset: 2px; }
+.lang-now { display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px 8px 10px; pointer-events: none; }
+.lang-now svg { flex: none; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+.lang-now b { font-weight: 500; }
+.lang-now i { flex: none; width: 6px; height: 6px; margin: -3px 0 0 1px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); opacity: .7; }
+.lang select { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; border: 0; opacity: 0; cursor: pointer; font-size: 16px; -webkit-appearance: none; appearance: none; }
 
 /* ---------- hero ---------- */
 .hero { position: relative; min-height: 100vh; min-height: 100svh; color: #fff; overflow: hidden; padding: 130px 0 96px; display: flex; flex-direction: column; justify-content: center;
@@ -605,6 +615,87 @@ form.sending button[disabled] { opacity: .7; cursor: progress; transform: none; 
 .fine-list li, .give-panel .fine { font-size: 14px; line-height: 1.55; color: var(--muted); }
 .give-panel .fine { margin: 14px 0 0; }
 
+/* ---------- other languages (shared/i18n.js) ---------- */
+/* A page chosen in another language is held back until its words are in that language (a class set in the
+   page's head, and taken off by shared/i18n.js or after three seconds), then shown. */
+html.i18n-wait { background: var(--cream); }
+html.i18n-wait body { opacity: 0; }
+html.i18n-on body { transition: opacity .2s; }
+/* in the footer of a translated page: how it was translated, and the way back to English */
+.ftr-lang { margin-top: 8px; opacity: .85; }
+.ftr-lang a { color: inherit; text-underline-offset: 3px; }
+/* offered once to a visitor whose browser asks for one of the site's languages */
+.lang-offer { position: fixed; z-index: 45; left: 14px; right: 14px; bottom: calc(var(--ed-bar, 0px) + 18px); width: fit-content; margin-inline: auto; display: flex; align-items: center; gap: 6px; padding: 6px 6px 6px 20px; border-radius: 999px; background: var(--night); color: #fff; font-size: 15px; line-height: 1.3; box-shadow: 0 18px 44px -16px rgba(8, 10, 40, .7), 0 0 0 1px rgba(255,255,255,.08); animation: nav-in .5s cubic-bezier(.2, .7, .2, 1) .6s both; }
+.lang-offer a { padding: 8px 6px; color: #fff; text-decoration: underline; text-decoration-color: var(--amber); text-underline-offset: 4px; }
+.lang-offer button { flex: none; width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255,255,255,.1); color: #fff; font: 400 20px/1 var(--sans); cursor: pointer; }
+.lang-offer button:hover { background: rgba(255,255,255,.2); }
+/* Long words (German, Finnish, Dutch): a word wider than its box breaks rather than widening the page, with a
+   hyphen where the browser knows the language's hyphenation. ("anywhere" also lets a narrow column shrink to
+   fit, which "break-word", the site's setting in English, does not.) */
+html.i18n-on body { overflow-wrap: anywhere; }
+html.i18n-on .facts { overflow-wrap: break-word; }   /* a word in a row of figures stays whole: its column sizes to it */
+html.i18n-on :is(h1, h2, h3, .big, .btn) { hyphens: auto; }
+/* The home page's headline is broken into lines by hand in English. In another language the words fall
+   differently: the lines are evened out by the browser, a size down, with the last phrase on a line of its own. */
+html.i18n-on .hero h1 { font-size: clamp(40px, 5.3vw, 76px); text-wrap: balance; }
+html.i18n-on .hero h1 br { display: none; }
+html.i18n-on .hero h1 em { display: block; }
+/* Writing systems the site's two typefaces don't have: each names fonts that devices carry. Latin letters and
+   digits inside them stay in the site's typefaces. */
+:lang(zh) { --serif: 'Fraunces', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', sans-serif; --sans: 'DM Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', system-ui, sans-serif; }
+:lang(ja) { --serif: 'Fraunces', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', 'Noto Sans JP', sans-serif; --sans: 'DM Sans', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', 'Noto Sans JP', system-ui, sans-serif; }
+:lang(ko) { --serif: 'Fraunces', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif; --sans: 'DM Sans', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', system-ui, sans-serif; word-break: keep-all; }
+:lang(hi) { --serif: 'Fraunces', 'Kohinoor Devanagari', 'Noto Sans Devanagari', 'Nirmala UI', 'Mangal', sans-serif; --sans: 'DM Sans', 'Kohinoor Devanagari', 'Noto Sans Devanagari', 'Nirmala UI', 'Mangal', system-ui, sans-serif; }
+:lang(he) { --serif: 'Fraunces', 'Arial Hebrew', 'Noto Sans Hebrew', 'Segoe UI', Arial, sans-serif; --sans: 'DM Sans', 'Arial Hebrew', 'Noto Sans Hebrew', 'Segoe UI', Arial, system-ui, sans-serif; }
+:lang(ar) { --serif: 'Fraunces', 'Geeza Pro', 'Noto Naskh Arabic', 'Segoe UI', Tahoma, sans-serif; --sans: 'DM Sans', 'Geeza Pro', 'Noto Sans Arabic', 'Segoe UI', Tahoma, system-ui, sans-serif; }
+/* These scripts have no italics and no capitals: emphasis keeps its colour, and spaced-out capitals become plain. */
+:is(:lang(zh), :lang(ja), :lang(ko), :lang(hi), :lang(he), :lang(ar)) * { font-style: normal !important; }
+:is(:lang(hi), :lang(ar)) * { letter-spacing: 0 !important; }   /* spacing pulls joined letters apart */
+:is(:lang(hi), :lang(ar)) :is(h1, h2, h3, .big, blockquote) { line-height: 1.4; }   /* room for marks above and below the line */
+/* Their letters are larger for the same type size, so the largest headlines go down a size. */
+html:is(:lang(hi), :lang(ar)) :is(.hero h1, .phero h1) { font-size: clamp(38px, 5vw, 68px); }
+:is(:lang(hi), :lang(ar)) .big { font-size: clamp(30px, 3.6vw, 46px); }
+
+/* Right to left (Arabic, Hebrew). The page mirrors by itself: columns, the menu, the alignment of text. What the
+   stylesheet pins to the left or the right by name is turned round here, at each screen size it is set for. */
+[dir="rtl"] .status { margin-left: 0; margin-right: 8px; }
+[dir="rtl"] .timeline .tag { margin-left: 0; margin-right: 10px; }
+[dir="rtl"] .way .arrow { right: auto; left: 30px; transform: scaleX(-1); }   /* the arrow points the way the text runs */
+[dir="rtl"] .way:hover .arrow { transform: scaleX(-1) translateX(6px); }
+[dir="rtl"] .sec.promise .why-body { padding-left: 0; padding-right: 36px; }
+[dir="rtl"] .facts::before { left: auto; right: 0; transform: scaleX(-1); }
+[dir="rtl"] .facts li:first-child { padding-left: 26px; padding-right: 0; }
+[dir="rtl"] .facts li:last-child { padding-left: 0; padding-right: 26px; }
+[dir="rtl"] .facts li + li::before { left: auto; right: -2.5px; }
+[dir="rtl"] .pull { padding: 6px 34px 6px 0; }
+[dir="rtl"] .pull::before { left: auto; right: 0; }
+[dir="rtl"] .timeline { padding-left: 0; padding-right: 34px; }
+[dir="rtl"] .timeline::before { left: auto; right: 8px; }
+[dir="rtl"] .timeline li::before { left: auto; right: -31px; }
+[dir="rtl"] .history-steps { padding-left: 0; padding-right: 36px; }
+[dir="rtl"] .history-steps::before { left: auto; right: 5px; }
+[dir="rtl"] .history-steps li::before { left: auto; right: -36px; }
+[dir="rtl"] .pager .next { text-align: left; }
+[dir="rtl"] .burger { margin-right: 0; margin-left: -11px; }
+[dir="rtl"] .lang-now i { margin: -3px 1px 0 0; }
+@media (max-width: 960px) {
+  [dir="rtl"] .sec.promise .why-body { padding-right: 0; }
+  [dir="rtl"] .hero .facts::before { left: 50%; right: auto; transform: translateX(-50%); }
+  [dir="rtl"] .facts li:first-child { padding-left: 20px; }
+  [dir="rtl"] .facts li:last-child { padding-right: 20px; }
+}
+@media (max-width: 640px) {
+  [dir="rtl"] .facts::before { left: 50%; right: auto; transform: translateX(-50%); }
+  [dir="rtl"] .facts li + li { border-left: 0; border-right: 1px solid rgba(255, 255, 255, .14); }
+  [dir="rtl"] .facts:has(> li:nth-child(4)) li:nth-child(3) { border-right: 0; }
+  [dir="rtl"] .pager .next { text-align: right; }
+  [dir="rtl"] .hint svg { margin-right: 0; margin-left: 5px; }
+  [dir="rtl"] .history-steps { padding-right: 28px; }
+  [dir="rtl"] .history-steps li::before { right: -28px; }
+  [dir="rtl"] .way .arrow { left: 26px; }
+  [dir="rtl"] .pull { padding: 6px 24px 6px 0; }
+}
+
 /* ---------- sub-page responsive ---------- */
 @media (max-width: 960px) {
   .hero .facts { justify-content: center; }
@@ -675,6 +766,9 @@ form.sending button[disabled] { opacity: .7; cursor: progress; transform: none; 
   .nav a:not(.btn)::after { left: 20px; right: calc(100% - 20px); bottom: 5px; }
   .nav a:not(.btn):hover::after, .nav a[aria-current="page"]:not(.btn)::after { right: 20px; }
   .nav .btn { margin-top: 20px; padding: 15px 46px; font-size: 17px; }
+  .nav .lang { flex: none; margin-top: 26px; font-size: 16px; }
+  .nav .lang-now { padding: 12px 18px 12px 15px; gap: 9px; }
+  .nav .lang-now svg { width: 18px; height: 18px; }
   .nav.open > * { animation: nav-in .5s cubic-bezier(.2, .7, .2, 1) both; }
   .nav.open > :nth-child(2) { animation-delay: .04s; }
   .nav.open > :nth-child(3) { animation-delay: .08s; }
@@ -691,6 +785,39 @@ form.sending button[disabled] { opacity: .7; cursor: progress; transform: none; 
   .split > .form-card { order: -1; }
   /* News and Updates is read first: its mailing-list box stays after the dates */
   .news-split > .form-card { order: 0; }
+}
+
+/* In some languages the menu is wider than the bar on a screen just wider than a tablet. shared/site.js
+   measures that and sets "nav-tight" on the page, and the menu becomes the button and the screen of its own
+   that a phone has. These are the rules above, word for word, under that name: change them together. */
+@media (min-width: 961px) {
+  html.nav-tight .burger { display: block; z-index: 2; width: 44px; height: 44px; margin-right: -11px; }
+  html.nav-tight .burger span { left: 11px; right: 11px; }
+  html.nav-tight .burger span:first-child { top: 17px; }
+  html.nav-tight .burger span:last-child { top: 25px; }
+  html.nav-tight .brand { position: relative; z-index: 2; }   /* the name stays readable above the open menu */
+  html.nav-tight .nav { position: fixed; inset: 0; flex-direction: column; justify-content: flex-start; gap: 2px; padding: 92px 24px 44px; overflow-y: auto; overscroll-behavior: contain;
+    background: radial-gradient(130% 55% at 50% 118%, rgba(246, 160, 110, .5), transparent 70%), linear-gradient(180deg, #070a24, var(--night) 40%, #1d2160 78%, #3a2a6a);
+    opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .3s, visibility 0s .3s; }
+  html.nav-tight .nav.open { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity .3s, visibility 0s; }
+  /* centred while it fits; on a short or sideways screen it starts at the top and scrolls instead of being cut off */
+  html.nav-tight .nav > :first-child { margin-top: auto; }
+  html.nav-tight .nav > :last-child { margin-bottom: auto; }
+  html.nav-tight .nav a:not(.btn) { font: 400 30px/1.2 var(--serif); padding: 9px 20px; }
+  html.nav-tight .nav a:not(.btn)::after { left: 20px; right: calc(100% - 20px); bottom: 5px; }
+  html.nav-tight .nav a:not(.btn):hover::after, html.nav-tight .nav a[aria-current="page"]:not(.btn)::after { right: 20px; }
+  html.nav-tight .nav .btn { margin-top: 20px; padding: 15px 46px; font-size: 17px; }
+  html.nav-tight .nav .lang { flex: none; margin-top: 26px; font-size: 16px; }
+  html.nav-tight .nav .lang-now { padding: 12px 18px 12px 15px; gap: 9px; }
+  html.nav-tight .nav .lang-now svg { width: 18px; height: 18px; }
+  html.nav-tight .nav.open > * { animation: nav-in .5s cubic-bezier(.2, .7, .2, 1) both; }
+  html.nav-tight .nav.open > :nth-child(2) { animation-delay: .04s; }
+  html.nav-tight .nav.open > :nth-child(3) { animation-delay: .08s; }
+  html.nav-tight .nav.open > :nth-child(4) { animation-delay: .12s; }
+  html.nav-tight .nav.open > :nth-child(5) { animation-delay: .16s; }
+  html.nav-tight .nav.open > :nth-child(6) { animation-delay: .2s; }
+  html.nav-tight .nav.open > :nth-child(7) { animation-delay: .24s; }
+  html.nav-tight:has(.nav.open) { overflow: hidden; }   /* the page behind stays put while the menu is open */
 }
 
 /* tablets: room for two columns again, but not three */
@@ -724,6 +851,7 @@ form.sending button[disabled] { opacity: .7; cursor: progress; transform: none; 
   .hero-grid { gap: 26px; }
   .eyebrow { font-size: 12px; letter-spacing: .2em; margin-bottom: 22px; }
   .hero h1 { font-size: clamp(35px, 11.4vw, 46px); margin-bottom: 22px; }
+  html.i18n-on .hero h1 { font-size: clamp(32px, 10vw, 42px); }
   .lede { margin-bottom: 32px; }
   .hero .cta { flex-direction: column; align-items: stretch; width: min(100%, 304px); margin-inline: auto; gap: 12px; }
   .hero .cta .btn { justify-content: center; }
@@ -733,6 +861,9 @@ form.sending button[disabled] { opacity: .7; cursor: progress; transform: none; 
 
   /* ---- the numbers: each column as wide as its own words need, sharing what is left ---- */
   .facts { grid-template-columns: repeat(3, minmax(max-content, 1fr)); }
+  /* in other languages the words can be longer: each column is at least as wide as its longest word, and a
+     figure of several words wraps between them */
+  html.i18n-on .facts:not(:has(> li:nth-child(4))) { grid-template-columns: repeat(3, minmax(min-content, 1fr)); }
   .facts li { padding: 0 8px !important; }
   .facts b { font-size: clamp(21px, 6.4vw, 26px); }
   .facts span { font-size: clamp(15px, 4.3vw, 17px); }

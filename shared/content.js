@@ -17,6 +17,12 @@
 // and never carries an address.
 //
 // The editor's own code (shared/admin/) is loaded only in a browser that has signed in.
+//
+// The site can be read in other languages (shared/i18n.js). A piece of text is shown in the visitor's language
+// when there is a translation of exactly what it says in English now, saved changes included, and in English
+// otherwise.
+
+import * as i18n from './i18n.js';
 
 const DB = 'https://firestore.googleapis.com/v1/projects/compassioncf-editor/databases/(default)/documents';   // the site's own database
 export const TEXT_DOC = 'content/home';   // one document: anyone may read it, only editors may write it
@@ -128,21 +134,38 @@ export function sanitize(html) {
 /* ---------- applying edits ---------- */
 
 // Every editable piece of text on this page, with the key and wording it has in the page's own HTML.
+// `showing` is what this script last put there (at first, the page's own wording).
 export const entries = findText(document).map((el) => {
   const original = el.innerHTML;
-  return { el, original, key: keyFor(normalize(original)), edited: false };
+  return { el, original, key: keyFor(normalize(original)), edited: false, showing: original };
 });
+const pieces = new WeakSet(entries.map((entry) => entry.el));
+
+// On a page being read in another language, a piece left in English says so, for screen readers and so that it
+// is set from left to right in a language written the other way.
+function markLanguage(entry, english) {
+  if (!i18n.translated || !i18n.hasTable()) return;
+  if (english && /\p{L}/u.test(entry.el.textContent)) {   // words, not a bare number or a mark
+    entry.el.setAttribute('lang', 'en');
+    if (i18n.rtl) entry.el.setAttribute('dir', 'ltr');
+  } else if (entry.el.getAttribute('lang') === 'en') {
+    entry.el.removeAttribute('lang');
+    if (i18n.rtl) entry.el.removeAttribute('dir');
+  }
+}
 
 export function apply(edits = {}) {
   for (const entry of entries) {
-    const html = edits[entry.key];
-    if (typeof html === 'string') {
-      entry.el.innerHTML = sanitize(html);
-      entry.edited = true;
-    } else if (entry.edited) {
-      entry.el.innerHTML = entry.original;
-      entry.edited = false;
+    const saved = typeof edits[entry.key] === 'string';
+    const english = saved ? sanitize(edits[entry.key]) : entry.original;
+    const local = i18n.translationOf(english);   // null in English, and for wording that has no translation yet
+    const want = local === null ? english : sanitize(local);
+    if (want !== entry.showing) {
+      entry.el.innerHTML = want;
+      entry.showing = want;
     }
+    entry.edited = saved;
+    markLanguage(entry, local === null);
   }
 }
 
@@ -318,16 +341,21 @@ export function adopt(root = document) {
   for (const el of root.querySelectorAll('[data-editable]')) {
     if (entries.some((entry) => entry.el === el)) continue;
     const original = el.innerHTML;
-    added.push({ el, original, key: keyFor(`${el.dataset.editable}\n${normalize(original)}`), edited: false });
+    added.push({ el, original, key: keyFor(`${el.dataset.editable}\n${normalize(original)}`), edited: false, showing: original });
   }
   if (!added.length) return added;
   entries.push(...added);
+  for (const entry of added) pieces.add(entry.el);
   apply(edits);
+  i18n.translateTree(root === document ? document.body : root);   // the words around them: labels and descriptions
   document.dispatchEvent(new CustomEvent('ccf:text-added', { detail: { entries: added } }));   // the editor, if it is open, makes them editable
   return added;
 }
 document.addEventListener('ccf:editable', (e) => adopt(e.target instanceof Element ? e.target : document));
 adopt();
+
+// The page's text has been read as it was written, so its words can now be put into the visitor's language.
+i18n.start({ owned: (el) => pieces.has(el), translate: () => apply(edits) });
 
 // Used by the editor after it saves: show the new set of changes and keep it for the next visit.
 export function setEdits(next) {

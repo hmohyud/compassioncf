@@ -15,6 +15,7 @@
 // database refuses a request for essays that does not itself ask for published ones only.
 
 import * as content from './content.js';   // for the dates written into a page that have since become events (content.datesOff)
+import { t, th, ready as wordsReady, locale, translated, rtl } from './i18n.js';   // labels and dates in the visitor's language
 
 const DB = 'https://firestore.googleapis.com/v1/projects/compassioncf-editor/databases/(default)/documents';
 const DONATE_PAGE = new URL('../donate/', import.meta.url).href;   // this site's donate page, wherever the site is served from
@@ -91,7 +92,11 @@ export function toDate(v) {
   const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(v);
   return isNaN(d) ? null : d;
 }
-const longDate = (d) => d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+const longDate = (d) => d.toLocaleDateString(locale, { year: 'numeric', month: 'long', day: 'numeric' });
+// Essays and events are shown as the foundation wrote them. On a page being read in another language they are
+// marked as English, for screen readers and so that they are set from left to right.
+const AS_WRITTEN = translated ? ` lang="en"${rtl ? ' dir="ltr"' : ''}` : '';
+const asWritten = (el) => { if (el && translated) { el.lang = 'en'; if (rtl) el.dir = 'ltr'; } };
 const isoDay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 // Titles on the live site may carry a subtitle on a second line.
@@ -187,10 +192,10 @@ function postCard(p, i, href) {
   <div class="post-art" aria-hidden="true"></div>
   <div class="post-text">
     ${d ? `<p class="post-date"><time datetime="${isoDay(d)}">${longDate(d)}</time></p>` : ''}
-    <h3><a href="${url}">${esc(title)}</a></h3>
-    ${sub ? `<p class="post-sub">${esc(sub)}</p>` : ''}
-    <p class="post-ex">${esc(excerpt(p))}</p>
-    <span class="more" aria-hidden="true">Read the essay <span>→</span></span>
+    <h3${AS_WRITTEN}><a href="${url}">${esc(title)}</a></h3>
+    ${sub ? `<p class="post-sub"${AS_WRITTEN}>${esc(sub)}</p>` : ''}
+    <p class="post-ex"${AS_WRITTEN}>${esc(excerpt(p))}</p>
+    <span class="more" aria-hidden="true">${esc(t('Read the essay'))} <span>→</span></span>
   </div>
 </article>`;
 }
@@ -247,19 +252,20 @@ async function blogPost(el) {
     slot('sub').textContent = sub;
     slot('sub').hidden = !sub;
     slot('by').innerHTML = [
-      p.author ? `<span>By <b>${esc(p.author)}</b></span>` : '',
+      p.author ? `<span>${esc(t('By {author}')).replace('{author}', `<b${AS_WRITTEN}>${esc(p.author)}</b>`)}</span>` : '',
       d ? `<time datetime="${isoDay(d)}">${longDate(d)}</time>` : '',
-      `<span>${Math.max(1, Math.round(words / 230))} min read</span>`,
+      `<span>${esc(t('{n} min read', { n: Math.max(1, Math.round(words / 230)) }))}</span>`,
     ].join('');
     slot('body').innerHTML = markdown(p.content);
+    for (const k of ['title', 'sub', 'body']) asWritten(slot(k));
     const author = slot('author');
     if (author && /thom bond/i.test(p.author || '')) author.hidden = false;
   } catch (err) {
     console.warn('[cms] post unavailable:', err.message);
-    slot('title').textContent = 'This essay couldn’t be loaded';
+    slot('title').textContent = t('This essay couldn’t be loaded');
     slot('sub').hidden = true;
     slot('by').textContent = '';
-    slot('body').innerHTML = '<p class="cms-note">It may have moved, or the connection dropped. Please try again in a moment, or return to <a href="./">all essays</a>.</p>';
+    slot('body').innerHTML = `<p class="cms-note">${th('It may have moved, or the connection dropped. Please try again in a moment, or return to <a href="./">all essays</a>.')}</p>`;
   }
 }
 
@@ -274,18 +280,18 @@ function eventItem(e, i) {
   const d = e.when;
   const month = e.wholeMonth === true;
   const timed = !month && (d.getHours() || d.getMinutes());
-  const day = d.toLocaleDateString('en-US', month ? { month: 'long', year: 'numeric' } : { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-  const time = timed ? ` · ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : '';
+  const day = d.toLocaleDateString(locale, month ? { month: 'long', year: 'numeric' } : { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  const time = timed ? ` · ${d.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' })}` : '';
   const stamp = month ? isoDay(d).slice(0, 7) : timed ? d.toISOString() : isoDay(d);
   const badge = month
-    ? `<b>${d.toLocaleDateString('en-US', { month: 'short' })}</b><small>${d.getFullYear()}</small>`
-    : `<b>${d.getDate()}</b><span>${d.toLocaleDateString('en-US', { month: 'short' })}</span><small>${d.getFullYear()}</small>`;
+    ? `<b>${d.toLocaleDateString(locale, { month: 'short' })}</b><small>${d.getFullYear()}</small>`
+    : `<b>${d.getDate()}</b><span>${d.toLocaleDateString(locale, { month: 'short' })}</span><small>${d.getFullYear()}</small>`;
   return `<li class="event" style="--i:${i}" data-date="${isoDay(e.ends)}" data-no-edit>
   <div class="event-date${month ? ' month' : ''}" aria-hidden="true">${badge}</div>
   <div>
-    <h3>${esc(e.title || 'Event')}</h3>
+    <h3${AS_WRITTEN}>${esc(e.title || t('Event'))}</h3>
     <p class="event-meta"><time datetime="${stamp}">${day}${time}</time>${e.location ? ` · ${esc(e.location)}` : ''}</p>
-    ${e.description ? `<div class="event-desc">${markdown(e.description)}</div>` : ''}
+    ${e.description ? `<div class="event-desc"${AS_WRITTEN}>${markdown(e.description)}</div>` : ''}
   </div>
 </li>`;
 }
@@ -337,10 +343,11 @@ async function events(el) {
   } else {
     console.warn('[cms] events unavailable:', found.reason?.message);
     const note = part('note');
-    if (note) note.textContent = 'We couldn’t load the calendar just now. New dates are always shared with our mailing list first.';
+    if (note) note.textContent = t('We couldn’t load the calendar just now. New dates are always shared with our mailing list first.');
   }
   settle();
 }
 
 const mounts = { 'blog-list': blogList, 'blog-post': blogPost, events };
-document.querySelectorAll('[data-cms]').forEach((el) => mounts[el.dataset.cms]?.(el));
+// Once the visitor's language has been read (at once, in English), so that what is written here is written in it.
+wordsReady.then(() => document.querySelectorAll('[data-cms]').forEach((el) => mounts[el.dataset.cms]?.(el)));

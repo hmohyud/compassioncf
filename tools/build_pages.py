@@ -45,7 +45,21 @@ def social(s, cls='social', heading='Follow Thom Bond'):
           </ul>
         </div>'''
 
-def header(r, active, home=False):
+# The site can be read in other languages (shared/i18n.js, which also fills in this list). The menu is the
+# device's own list of choices, laid invisibly over a label that shows the current language.
+LANG_MENU = '''
+        <div class="lang" data-lang-menu data-no-translate>
+          <span class="lang-now" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.7 3 2.7 15 0 18M12 3c-2.7 3-2.7 15 0 18"/></svg><b data-lang-now>English</b><i></i></span>
+          <select aria-label="Language"><option value="en" selected>English</option></select>
+        </div>'''
+
+# In a browser that has chosen another language, a page is held back (.i18n-wait in style.css) until its words are
+# in that language, so it is never seen in English first. This has to run before the page is drawn, so it is
+# written into the page itself. The hold is let go after three seconds whatever happens.
+LANG_HEAD = '''
+  <script>(function(){try{var d=document.documentElement,m=/[?&]lang=([A-Za-z]{2})/.exec(location.search),l=(m?m[1]:localStorage.getItem("ccf-lang")||"").toLowerCase().slice(0,2);if(/^[a-z]{2}$/.test(l)&&l!=="en"){d.lang=l;if(l==="ar"||l==="he")d.dir="rtl";d.classList.add("i18n-wait");setTimeout(function(){d.classList.remove("i18n-wait")},3000)}}catch(e){}})()</script>'''
+
+def header(r, active, home=False, languages=True):
     brand = '#top' if home else (r or './')
     links = '\n'.join(
         f'        <a href="{r}{slug}/"' + (' aria-current="page"' if slug == active else '') + f'>{label}</a>'
@@ -59,7 +73,7 @@ def header(r, active, home=False):
       <button class="burger" data-nav-toggle aria-controls="nav" aria-expanded="false" aria-label="Menu"><span></span><span></span></button>
       <nav id="nav" class="nav" aria-label="Primary">
 {links}
-        <a class="btn btn-sun sm" href="{r}donate/" data-donate>Donate</a>
+        <a class="btn btn-sun sm" href="{r}donate/" data-donate>Donate</a>{LANG_MENU if languages else ''}
       </nav>
     </div>
   </header>'''
@@ -121,7 +135,7 @@ def facts(items, cap='', count=False):
     cap_html = f'<p class="facts-cap">{cap}</p>' if cap else ''
     return f'\n          <div class="facts-block"><ul class="facts">{lis}</ul>{cap_html}</div>'
 
-def page(path, title, desc, active, hero, body, extra_js='', head='', body_class=''):
+def page(path, title, desc, active, hero, body, extra_js='', head='', body_class='', languages=True):
     depth = path.count('/')  # 'about/index.html' -> 1
     r = '../' * depth
     s = r + 'shared/'
@@ -131,7 +145,7 @@ def page(path, title, desc, active, hero, body, extra_js='', head='', body_class
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">{LANG_HEAD if languages else ''}
   <title>{title} — Compassion Course Foundation</title>
   <meta name="description" content="{desc}">{head}
   <link rel="icon" href="{s}img/mark.png">
@@ -139,11 +153,12 @@ def page(path, title, desc, active, hero, body, extra_js='', head='', body_class
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=DM+Sans:opsz,wght@9..40,400..700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{r}style.css">
+  <link rel="modulepreload" href="{s}i18n.js">
 </head>
 <body{body_attr}>
   <a class="skip" href="#main">Skip to content</a>
 
-  {header(r, active)}
+  {header(r, active, languages=languages)}
 
   <main id="main">
     {hero.replace('{r}', r).replace('{s}', s)}
@@ -783,6 +798,10 @@ contact_hero = phero('{r}', 'Contact', [], 'Contact', 'We’d love to <em>hear</
 # _reference/jotform/contact-form.css, leaves the form's own copy out, so the logo shows once.
 JOTFORM = '263233512254045'
 JOTFORM_AT = f'https://form.jotform.com/{JOTFORM}'
+# The form says how tall it is as soon as it has loaded, which can be before shared/contact.js has started. This
+# line, written into the page just before the frame, keeps whatever the frame says until that script takes over
+# (it reads window.ccfHeard first, with the same checks as for anything said later).
+JOTFORM_EARLY = '<script>window.ccfHeard=[];addEventListener("message",function(e){if(window.ccfHeard)window.ccfHeard.push(e)})</script>'
 CONTACT_JS = '\n  <script type="module" src="{s}contact.js"></script>'
 
 contact_body = f'''<section class="pbody">
@@ -805,6 +824,7 @@ contact_body = f'''<section class="pbody">
         </div>
         <div class="form-card jot reveal">
           <div class="jot-clip" data-jotform-clip>
+            {JOTFORM_EARLY}
             <iframe class="jot-frame" data-jotform="{JOTFORM}" src="{JOTFORM_AT}?isIframeEmbed=1" title="Contact The Compassion Course Foundation" scrolling="no"></iframe>
           </div>
           <p class="jot-alt" data-jotform-alt hidden>The form is taking a while to appear. <a href="{JOTFORM_AT}" target="_blank" rel="noopener">Open the Form in a New Tab</a></p>
@@ -933,7 +953,7 @@ PAGES = [
 for path, title, desc, active, hero, body, js in PAGES:
     page(path, title, desc, active, hero, body, js)
 
-page('admin/index.html', 'Site editor', 'Sign in to edit the Compassion Course Foundation website.', None, '', admin_body, ADMIN_JS, head=NOINDEX, body_class='no-hero')
+page('admin/index.html', 'Site editor', 'Sign in to edit the Compassion Course Foundation website.', None, '', admin_body, ADMIN_JS, head=NOINDEX, body_class='no-hero', languages=False)   # the editor is in English
 page('404.html', 'Page not found', 'This page could not be found.', None, notfound_hero, notfound_body, SKIP_404, head=HEAD_404)
 
 # Pages this script used to build. Their files are removed so an old copy can't stay published;
@@ -978,6 +998,8 @@ def home_cards():
 home = os.path.join(SITE, 'index.html')
 with open(home, encoding='utf-8') as f:
     h = f.read()
+if LANG_HEAD.strip() not in h:
+    sys.exit('index.html: its <head> is missing the lines kept in LANG_HEAD (they hold a page back until its words are in the visitor\'s language)')
 h = re.sub(r'<header class="hdr".*?</header>', lambda m: header('', None, home=True), h, count=1, flags=re.S)
 h = re.sub(r'<footer class="ftr">.*?</footer>', lambda m: footer('', home=True), h, count=1, flags=re.S)
 h, cards_found = re.subn(r'(<!-- program cards:[^>]*-->).*?(<!-- /program cards -->)', lambda m: f'{m.group(1)}\n        {home_cards()}\n        {m.group(2)}', h, count=1, flags=re.S)
