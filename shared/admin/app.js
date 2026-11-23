@@ -11,7 +11,7 @@
 
 import * as session from './session.js';
 import { markdown, splitTitle, toDate, lastDay, inOrder, PUBLISHED_SITE } from '../cms.js';
-import { fetchChanges, fetchEdits, setEdits, setImages, setDatesOff, isStored, hasPhoto, isGray, photoUrl, keepPhoto, isCurrent, sanitize, TEXT_DOC, TEXT_FIELD, IMAGE_FIELD, DATES_FIELD, STAFF_KEPT } from '../content.js';
+import { fetchChanges, fetchEdits, setEdits, setImages, setDatesOff, isStored, hasPhoto, isGray, photoUrl, keepPhoto, isCurrent, sanitize, TEXT_DOC, TEXT_FIELD, IMAGE_FIELD, DATES_FIELD, STAFF_KEPT, QUOTE_KEPT } from '../content.js';
 import { EARLIER, ORIGINALS, WRITTEN_IN } from './originals.js';
 import { preparePhoto } from './photo.js';
 
@@ -409,131 +409,41 @@ async function moveItem(collection, id, step) {
   }
 }
 
-/* ---------- testimonials ---------- */
+/* ---------- a photo kept with a record: a staff member's portrait, the picture beside a testimonial ---------- */
 
-async function testimonials(id) {
-  if (id) return testimonialForm(id);
-  loading('Loading testimonials…');
-  const items = (await session.list('testimonials')).sort(inOrder);
-  view().innerHTML = `
-    ${takeFlash()}
-    <div class="adm-head">
-      <div><h2>Testimonials</h2><p>Shown on the <a href="${SITE}programs/scholarship-fund/" target="_blank" rel="noopener">Scholarship Fund page</a>, in a section of their own and in this order. With none here, the page has no such section.</p></div>
-      <a class="btn btn-sun sm" href="#testimonials/new">Add a testimonial</a>
-    </div>
-    <p class="adm-note" data-note role="status"></p>
-    ${items.length ? `<ul class="adm-list">${items.map((q, i) => `
-      <li class="adm-ordered"><a class="adm-row" href="#testimonials/${encodeURIComponent(q.id)}">
-        <span><span class="adm-title">${esc(clipped(q.quote) || '(empty)')}</span><span class="adm-sub">${esc([line(q.name), line(q.about)].filter(Boolean).join(' · '))}</span></span></a>
-        ${moves('testimonials', q.id, i, items.length)}</li>`).join('')}</ul>` : '<p class="adm-empty">No testimonials yet. Press “Add a testimonial” to add the first one.</p>'}`;
-}
-
-async function testimonialForm(id) {
-  const isNew = id === 'new';
-  let q = { quote: '', name: '', about: '' };
-  if (!isNew) { loading('Opening the testimonial…'); q = await session.get('testimonials', id); }
-  view().innerHTML = `
-    <a class="adm-back" href="#testimonials">← All testimonials</a>
-    ${takeFlash()}
-    <form class="adm-edit form" data-form="testimonial" data-id="${esc(id)}">
-      <div class="adm-head"><div><h2>${isNew ? 'Add a testimonial' : 'Edit testimonial'}</h2></div>
-        ${isNew ? '' : `<a href="${SITE}programs/scholarship-fund/" target="_blank" rel="noopener">See it on the site →</a>`}</div>
-      <div class="field"><label for="t-quote">What they said <small>(no quotation marks needed; leave an empty line between paragraphs)</small></label><textarea id="t-quote" name="quote" required maxlength="3000" style="min-height:180px">${esc(q.quote || '')}</textarea></div>
-      <div class="form-row">
-        <div class="field"><label for="t-name">Who said it <small>(optional: a name, or words such as “A scholarship recipient”)</small></label><input id="t-name" name="name" maxlength="120" value="${esc(q.name || '')}"></div>
-        <div class="field"><label for="t-about">About them <small>(optional: for example a place, or a year)</small></label><input id="t-about" name="about" maxlength="160" value="${esc(q.about || '')}"></div>
-      </div>
-      <div class="adm-actions">
-        <button class="btn btn-sun" type="submit">Save</button>
-        <span class="adm-note" data-note role="status"></span>
-        <span class="spacer"></span>
-        ${isNew ? '' : `<button type="button" class="adm-danger" data-del="testimonials/${esc(encodeURIComponent(id))}" data-after="#testimonials" data-done="Testimonial deleted.">Delete testimonial</button>`}
-      </div>
-    </form>`;
-}
-
-async function saveTestimonial(form) {
-  const f = form.elements;
-  const id = form.dataset.id;
-  const data = { quote: f.quote.value.replace(/\r\n?/g, '\n').trim(), name: line(f.name.value), about: line(f.about.value), updatedAt: new Date() };
-  if (!data.quote) throw new session.Fail('other', 'Type what they said first.');
-  if (id === 'new') {
-    data.order = nextPlace(await session.list('testimonials'));
-    data.createdAt = new Date();
-    await session.create('testimonials', data);
-    flash = 'Testimonial added. It is on the Scholarship Fund page now.';
-    return go('#testimonials');
-  }
-  await session.update('testimonials', id, data);
-  return 'Saved. The change is live.';
-}
-
-/* ---------- staff ---------- */
-
-// The frame the Board page gives a portrait (.portrait img in style.css): three wide to four tall, keeping the
-// top of a picture that is too tall, and shown about 300 pixels wide.
-const PORTRAIT = { shape: 3 / 4, ax: 0.5, ay: 0.22, shown: 300 };
-// The portrait in the open form: the photo the record has now (had), a new one that has been prepared (picked),
-// and whether the photo it has was taken off (off). Nothing is stored until the form is saved.
+// How each is cut, where this browser keeps it once it has been read, and what its stored record says it is.
+//   PORTRAIT  the frame the Board page gives a portrait (.portrait img in style.css): three wide to four tall,
+//             keeping the top of a picture that is too tall, and shown about 300 pixels wide
+//   FACE      the small round picture beside the name under a testimonial (.said-face in style.css): a square,
+//             keeping the top of a tall picture and the middle of a wide one. It is under 50 pixels across on
+//             every screen, so 192 are kept: ample for the sharpest of them, and only a few kilobytes to read
+const PORTRAIT = { cut: { shape: 3 / 4, ax: 0.5, ay: 0.22, shown: 300 }, kept: STAFF_KEPT, of: 'staff' };
+const FACE = { cut: { shape: 1, ax: 0.5, ay: 0.22, most: 192 }, kept: QUOTE_KEPT, of: 'testimonial' };
+// The photo in the open form: which of the two it is (kind), the photo the record has now (had), a new one that
+// has been prepared (picked), and whether the photo it has was taken off (off). Nothing is stored until the
+// form is saved.
 let portrait = null;
 
-async function staff(id) {
-  if (id) return staffForm(id);
-  loading('Loading the staff…');
-  const items = (await session.list('staff')).sort(inOrder);
-  view().innerHTML = `
-    ${takeFlash()}
-    <div class="adm-head">
-      <div><h2>Staff</h2><p>Shown on the <a href="${SITE}board/" target="_blank" rel="noopener">Board page</a>, after the board members, in a section of their own and in this order. With nobody here, the page has no such section. The board members are part of the page itself: change their words and photos there, with “Edit this page”.</p></div>
-      <a class="btn btn-sun sm" href="#staff/new">Add a staff member</a>
-    </div>
-    <p class="adm-note" data-note role="status"></p>
-    ${items.length ? `<ul class="adm-list">${items.map((p, i) => `
-      <li class="adm-ordered"><a class="adm-row" href="#staff/${encodeURIComponent(p.id)}">
-        <span><span class="adm-title">${esc(line(p.name) || '(no name)')}${hasPhoto(p.photo) ? '' : '<span class="adm-badge quiet">No photo</span>'}</span><span class="adm-sub">${esc(line(p.role))}</span></span></a>
-        ${moves('staff', p.id, i, items.length)}</li>`).join('')}</ul>` : '<p class="adm-empty">Nobody yet. Press “Add a staff member” to add the first one.</p>'}`;
+function openPortrait(kind, photo) {
+  if (portrait?.picked) URL.revokeObjectURL(portrait.picked.preview);
+  portrait = { kind, had: hasPhoto(photo) ? photo : null, picked: null, off: false };
 }
 
-async function staffForm(id) {
-  const isNew = id === 'new';
-  let p = { name: '', role: '', bio: '', photo: null };
-  if (!isNew) { loading('Opening the staff member…'); p = await session.get('staff', id); }
-  if (portrait?.picked) URL.revokeObjectURL(portrait.picked.preview);
-  portrait = { had: hasPhoto(p.photo) ? p.photo : null, picked: null, off: false };
-  view().innerHTML = `
-    <a class="adm-back" href="#staff">← All staff</a>
-    ${takeFlash()}
-    <form class="adm-edit form" data-form="staff" data-id="${esc(id)}">
-      <div class="adm-head"><div><h2>${isNew ? 'Add a staff member' : 'Edit staff member'}</h2></div>
-        ${isNew ? '' : `<a href="${SITE}board/" target="_blank" rel="noopener">See it on the site →</a>`}</div>
-      <div class="form-row">
-        <div class="field"><label for="s-name">Name</label><input id="s-name" name="name" required maxlength="120" value="${esc(p.name || '')}"></div>
-        <div class="field"><label for="s-role">Role <small>(optional: shown above the name)</small></label><input id="s-role" name="role" maxlength="160" value="${esc(p.role || '')}"></div>
-      </div>
-      <div class="field"><label for="s-bio">About them <small>(leave an empty line between paragraphs)</small></label><textarea id="s-bio" name="bio" maxlength="6000" style="min-height:220px">${esc(p.bio || '')}</textarea></div>
-      <div class="field">
-        <label for="s-photo">Photo <small>(optional: it is cut to the shape of the portraits on the Board page, keeping the top of the picture)</small></label>
-        <div class="adm-portrait">
+// The part of a form that shows the photo, and lets one be chosen, taken off, and shown in black and white.
+const portraitField = ({ id, hint, gray, grayHint, round = false }) => `<div class="field">
+        <label for="${id}">Photo <small>(${hint})</small></label>
+        <div class="adm-portrait${round ? ' round' : ''}">
           <div class="adm-portrait-frame"><img data-portrait alt="" hidden><span data-portrait-none>No photo</span></div>
           <div class="adm-portrait-acts">
-            <input id="s-photo" class="adm-file" type="file" accept="image/*" data-portrait-file>
+            <input id="${id}" class="adm-file" type="file" accept="image/*" data-portrait-file>
             <button type="button" class="adm-link" data-act="portrait-off" hidden>Remove the photo</button>
-            <label class="adm-check"><input type="checkbox" name="gray"${isGray(p.photo) ? ' checked' : ''}> Grayscale <small>(the board’s portraits are black and white)</small></label>
+            <label class="adm-check"><input type="checkbox" name="gray"${gray ? ' checked' : ''}> Grayscale <small>(${grayHint})</small></label>
             <span class="adm-note" data-portrait-note role="status"></span>
           </div>
         </div>
-      </div>
-      <div class="adm-actions">
-        <button class="btn btn-sun" type="submit">Save</button>
-        <span class="adm-note" data-note role="status"></span>
-        <span class="spacer"></span>
-        ${isNew ? '' : `<button type="button" class="adm-danger" data-del="staff/${esc(encodeURIComponent(id))}" data-after="#staff" data-done="Staff member deleted.">Delete staff member</button>`}
-      </div>
-    </form>`;
-  showPortrait();
-}
+      </div>`;
 
-// Shows the portrait the form holds now, and what can be done with it.
+// Shows the photo the form holds now, and what can be done with it.
 function showPortrait() {
   const img = view()?.querySelector('[data-portrait]');
   if (!img || !portrait) return;
@@ -547,13 +457,13 @@ function showPortrait() {
   if (portrait.picked) { img.src = portrait.picked.preview; return; }
   if (!has) { img.removeAttribute('src'); return; }
   const wanted = portrait.had;
-  photoUrl(wanted, STAFF_KEPT)
+  photoUrl(wanted, portrait.kind.kept)
     .then((url) => { if (img.isConnected && portrait && portrait.had === wanted && !portrait.picked && !portrait.off) img.src = url; })
     .catch(() => { if (img.isConnected && portrait && portrait.had === wanted && !portrait.picked) { img.hidden = true; none.hidden = false; none.textContent = 'This photo couldn’t be loaded'; } });
 }
 
-// A photo chosen in the form is prepared at once (cut to the portrait's shape and made light), so the form
-// shows it as the page will; it is stored only when the form is saved.
+// A photo chosen in the form is prepared at once (cut to its place's shape and made light), so the form shows
+// it as the page will; it is stored only when the form is saved.
 async function choosePortrait(input) {
   const file = input.files && input.files[0];
   const note = view().querySelector('[data-portrait-note]');
@@ -562,7 +472,7 @@ async function choosePortrait(input) {
   note.className = 'adm-note';
   note.textContent = 'Preparing the photo…';
   try {
-    const made = await preparePhoto(file, PORTRAIT);
+    const made = await preparePhoto(file, mine.kind.cut);
     if (portrait !== mine || !note.isConnected) return;   // the form was left meanwhile
     if (mine.picked) URL.revokeObjectURL(mine.picked.preview);
     mine.picked = { ...made, preview: URL.createObjectURL(made.blob) };
@@ -589,23 +499,165 @@ function dropPortrait() {
   showPortrait();
 }
 
+// Saving a record that can have a photo takes three steps, so that the record never names a photo that isn't
+// there. First the photo chosen in the form is stored, under a name of its own (photoToName, which says what
+// the record should name). Then the record is saved. Then this browser keeps the new photo, the one the record
+// named before is removed, and the form shows what the record now holds (photoNamed). If the record could not
+// be saved, the new photo is taken away again (photoUnnamed).
+async function photoToName(form, kind) {
+  const state = portrait || { kind, had: null, picked: null, off: false };
+  let photo = state.had && !state.off ? { id: state.had.id, v: String(state.had.v ?? '') } : null;
+  let stored = null;
+  if (state.picked) {
+    stored = { id: session.newPhotoId(), v: Date.now().toString(36) };
+    await session.savePhoto(stored.id, state.picked.blob, { key: state.kind.of, width: state.picked.width, height: state.picked.height });
+    photo = { ...stored };
+  }
+  if (photo && form.elements.gray.checked) photo.gray = true;
+  return { state, photo, stored };
+}
+
+const photoUnnamed = ({ stored }) => { if (stored) session.removePhoto(stored.id).catch(() => {}); };
+
+async function photoNamed({ state, photo, stored }, form, stays) {
+  if (stored) await keepPhoto(stored, state.picked.blob, state.kind.kept);
+  if (state.had && (!photo || photo.id !== state.had.id)) {
+    session.removePhoto(state.had.id).catch((err) => console.warn('[editor] an unused photo was not removed:', err.detail || err.message));
+  }
+  if (!stays) return;   // a new record: its form closes, and the list is shown
+  if (state.picked) URL.revokeObjectURL(state.picked.preview);
+  portrait = { kind: state.kind, had: photo, picked: null, off: false };
+  const input = form.querySelector('[data-portrait-file]');
+  if (input) input.value = '';
+  showPortrait();
+}
+
+/* ---------- testimonials ---------- */
+
+async function testimonials(id) {
+  if (id) return testimonialForm(id);
+  loading('Loading testimonials…');
+  const items = (await session.list('testimonials')).sort(inOrder);
+  view().innerHTML = `
+    ${takeFlash()}
+    <div class="adm-head">
+      <div><h2>Testimonials</h2><p>Shown on the <a href="${SITE}programs/scholarship-fund/" target="_blank" rel="noopener">Scholarship Fund page</a>, in a section of their own and in this order. With none here, the page has no such section.</p></div>
+      <a class="btn btn-sun sm" href="#testimonials/new">Add a testimonial</a>
+    </div>
+    <p class="adm-note" data-note role="status"></p>
+    ${items.length ? `<ul class="adm-list">${items.map((q, i) => `
+      <li class="adm-ordered"><a class="adm-row" href="#testimonials/${encodeURIComponent(q.id)}">
+        <span><span class="adm-title">${esc(clipped(q.quote) || '(empty)')}</span><span class="adm-sub">${esc([line(q.name), line(q.about)].filter(Boolean).join(' · '))}</span></span></a>
+        ${moves('testimonials', q.id, i, items.length)}</li>`).join('')}</ul>` : '<p class="adm-empty">No testimonials yet. Press “Add a testimonial” to add the first one.</p>'}`;
+}
+
+async function testimonialForm(id) {
+  const isNew = id === 'new';
+  let q = { quote: '', name: '', about: '', photo: null };
+  if (!isNew) { loading('Opening the testimonial…'); q = await session.get('testimonials', id); }
+  openPortrait(FACE, q.photo);
+  view().innerHTML = `
+    <a class="adm-back" href="#testimonials">← All testimonials</a>
+    ${takeFlash()}
+    <form class="adm-edit form" data-form="testimonial" data-id="${esc(id)}">
+      <div class="adm-head"><div><h2>${isNew ? 'Add a testimonial' : 'Edit testimonial'}</h2></div>
+        ${isNew ? '' : `<a href="${SITE}programs/scholarship-fund/" target="_blank" rel="noopener">See it on the site →</a>`}</div>
+      <div class="field"><label for="t-quote">What they said <small>(no quotation marks needed; leave an empty line between paragraphs)</small></label><textarea id="t-quote" name="quote" required maxlength="3000" style="min-height:180px">${esc(q.quote || '')}</textarea></div>
+      <div class="form-row">
+        <div class="field"><label for="t-name">Who said it <small>(optional: a name, or words such as “A scholarship recipient”)</small></label><input id="t-name" name="name" maxlength="120" value="${esc(q.name || '')}"></div>
+        <div class="field"><label for="t-about">About them <small>(optional: for example a place, or a year)</small></label><input id="t-about" name="about" maxlength="160" value="${esc(q.about || '')}"></div>
+      </div>
+      ${portraitField({ id: 't-photo', hint: 'optional: shown small and round beside their name. It is cut to a square, keeping the top of a tall picture', gray: isGray(q.photo), grayHint: 'black and white', round: true })}
+      <div class="adm-actions">
+        <button class="btn btn-sun" type="submit">Save</button>
+        <span class="adm-note" data-note role="status"></span>
+        <span class="spacer"></span>
+        ${isNew ? '' : `<button type="button" class="adm-danger" data-del="testimonials/${esc(encodeURIComponent(id))}" data-after="#testimonials" data-done="Testimonial deleted.">Delete testimonial</button>`}
+      </div>
+    </form>`;
+  showPortrait();
+}
+
+async function saveTestimonial(form) {
+  const f = form.elements;
+  const id = form.dataset.id;
+  const quote = f.quote.value.replace(/\r\n?/g, '\n').trim();
+  if (!quote) throw new session.Fail('other', 'Type what they said first.');
+  const picture = await photoToName(form, FACE);
+  const data = { quote, name: line(f.name.value), about: line(f.about.value), photo: picture.photo, updatedAt: new Date() };
+  try {
+    if (id === 'new') {
+      data.order = nextPlace(await session.list('testimonials'));
+      data.createdAt = new Date();
+      await session.create('testimonials', data);
+    } else {
+      await session.update('testimonials', id, data);
+    }
+  } catch (err) {
+    photoUnnamed(picture);   // the record wasn't saved, so nothing names the new photo
+    throw err;
+  }
+  await photoNamed(picture, form, id !== 'new');
+  if (id === 'new') {
+    flash = 'Testimonial added. It is on the Scholarship Fund page now.';
+    return go('#testimonials');
+  }
+  return 'Saved. The change is live.';
+}
+
+/* ---------- staff ---------- */
+
+async function staff(id) {
+  if (id) return staffForm(id);
+  loading('Loading the staff…');
+  const items = (await session.list('staff')).sort(inOrder);
+  view().innerHTML = `
+    ${takeFlash()}
+    <div class="adm-head">
+      <div><h2>Staff</h2><p>Shown on the <a href="${SITE}board/" target="_blank" rel="noopener">Board page</a>, after the board members, in a section of their own and in this order. With nobody here, the page has no such section. The board members are part of the page itself: change their words and photos there, with “Edit this page”.</p></div>
+      <a class="btn btn-sun sm" href="#staff/new">Add a staff member</a>
+    </div>
+    <p class="adm-note" data-note role="status"></p>
+    ${items.length ? `<ul class="adm-list">${items.map((p, i) => `
+      <li class="adm-ordered"><a class="adm-row" href="#staff/${encodeURIComponent(p.id)}">
+        <span><span class="adm-title">${esc(line(p.name) || '(no name)')}${hasPhoto(p.photo) ? '' : '<span class="adm-badge quiet">No photo</span>'}</span><span class="adm-sub">${esc(line(p.role))}</span></span></a>
+        ${moves('staff', p.id, i, items.length)}</li>`).join('')}</ul>` : '<p class="adm-empty">Nobody yet. Press “Add a staff member” to add the first one.</p>'}`;
+}
+
+async function staffForm(id) {
+  const isNew = id === 'new';
+  let p = { name: '', role: '', bio: '', photo: null };
+  if (!isNew) { loading('Opening the staff member…'); p = await session.get('staff', id); }
+  openPortrait(PORTRAIT, p.photo);
+  view().innerHTML = `
+    <a class="adm-back" href="#staff">← All staff</a>
+    ${takeFlash()}
+    <form class="adm-edit form" data-form="staff" data-id="${esc(id)}">
+      <div class="adm-head"><div><h2>${isNew ? 'Add a staff member' : 'Edit staff member'}</h2></div>
+        ${isNew ? '' : `<a href="${SITE}board/" target="_blank" rel="noopener">See it on the site →</a>`}</div>
+      <div class="form-row">
+        <div class="field"><label for="s-name">Name</label><input id="s-name" name="name" required maxlength="120" value="${esc(p.name || '')}"></div>
+        <div class="field"><label for="s-role">Role <small>(optional: shown above the name)</small></label><input id="s-role" name="role" maxlength="160" value="${esc(p.role || '')}"></div>
+      </div>
+      <div class="field"><label for="s-bio">About them <small>(leave an empty line between paragraphs)</small></label><textarea id="s-bio" name="bio" maxlength="6000" style="min-height:220px">${esc(p.bio || '')}</textarea></div>
+      ${portraitField({ id: 's-photo', hint: 'optional: it is cut to the shape of the portraits on the Board page, keeping the top of the picture', gray: isGray(p.photo), grayHint: 'the board’s portraits are black and white' })}
+      <div class="adm-actions">
+        <button class="btn btn-sun" type="submit">Save</button>
+        <span class="adm-note" data-note role="status"></span>
+        <span class="spacer"></span>
+        ${isNew ? '' : `<button type="button" class="adm-danger" data-del="staff/${esc(encodeURIComponent(id))}" data-after="#staff" data-done="Staff member deleted.">Delete staff member</button>`}
+      </div>
+    </form>`;
+  showPortrait();
+}
+
 async function saveStaff(form) {
   const f = form.elements;
   const id = form.dataset.id;
   const name = line(f.name.value);
   if (!name) throw new session.Fail('other', 'Type their name first.');
-  const state = portrait || { had: null, picked: null, off: false };
-  // A new photo is stored first, under a name of its own, and only then named in the record the Board page
-  // reads, so that record never names a photo that isn't there.
-  let photo = state.had && !state.off ? { id: state.had.id, v: String(state.had.v ?? '') } : null;
-  let stored = null;
-  if (state.picked) {
-    stored = { id: session.newPhotoId(), v: Date.now().toString(36) };
-    await session.savePhoto(stored.id, state.picked.blob, { key: 'staff', width: state.picked.width, height: state.picked.height });
-    photo = { ...stored };
-  }
-  if (photo && f.gray.checked) photo.gray = true;
-  const data = { name, role: line(f.role.value), bio: f.bio.value.replace(/\r\n?/g, '\n').trim(), photo, updatedAt: new Date() };
+  const picture = await photoToName(form, PORTRAIT);
+  const data = { name, role: line(f.role.value), bio: f.bio.value.replace(/\r\n?/g, '\n').trim(), photo: picture.photo, updatedAt: new Date() };
   try {
     if (id === 'new') {
       data.order = nextPlace(await session.list('staff'));
@@ -615,23 +667,14 @@ async function saveStaff(form) {
       await session.update('staff', id, data);
     }
   } catch (err) {
-    if (stored) session.removePhoto(stored.id).catch(() => {});   // the record wasn't saved, so nothing names the new photo
+    photoUnnamed(picture);   // the record wasn't saved, so nothing names the new photo
     throw err;
   }
-  if (stored) await keepPhoto(stored, state.picked.blob, STAFF_KEPT);
-  // The photo the record named before is removed, now that the record no longer points at it.
-  if (state.had && (!photo || photo.id !== state.had.id)) {
-    session.removePhoto(state.had.id).catch((err) => console.warn('[editor] an unused photo was not removed:', err.detail || err.message));
-  }
+  await photoNamed(picture, form, id !== 'new');
   if (id === 'new') {
     flash = 'Staff member added. They are on the Board page now.';
     return go('#staff');
   }
-  if (state.picked) URL.revokeObjectURL(state.picked.preview);
-  portrait = { had: photo, picked: null, off: false };
-  const input = form.querySelector('[data-portrait-file]');
-  if (input) input.value = '';
-  showPortrait();
   return 'Saved. The change is live.';
 }
 
@@ -910,8 +953,8 @@ root.addEventListener('click', (e) => {
   const del = e.target.closest('[data-del]');
   if (del && confirmTwice(del)) {
     const [collection, id] = del.dataset.del.split('/').map(decodeURIComponent);
-    // A staff member's portrait is a record of its own: it goes once the person's record no longer names it.
-    const photo = collection === 'staff' && portrait?.had ? portrait.had.id : '';
+    // The photo of a staff member or a testimonial is a record of its own: it goes once nothing names it.
+    const photo = (collection === 'staff' || collection === 'testimonials') && portrait?.had ? portrait.had.id : '';
     attempt(del, async () => {
       await session.remove(collection, id);
       if (photo) session.removePhoto(photo).catch((err) => console.warn('[editor] an unused photo was not removed:', err.detail || err.message));

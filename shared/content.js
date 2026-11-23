@@ -220,9 +220,11 @@ export function setGray(el, on) {
 // A stored photo is fetched from the database once and then kept by the browser under its name and version,
 // so it is read again only when an editor has changed it. What the browser keeps is filed by what the photo
 // is for: KEPT holds the photos put in place of the pages' own, STAFF_KEPT the portraits of the people in the
-// editor's Staff list (shared/cms.js), so that tidying one never throws out the other.
+// editor's Staff list and QUOTE_KEPT the small pictures beside its testimonials (shared/cms.js), so that
+// tidying one never throws out another.
 const KEPT = 'kept-photo';
 export const STAFF_KEPT = 'kept-staff-photo';
+export const QUOTE_KEPT = 'kept-testimonial-photo';
 const photoUrls = new Map();   // "<photo>@<version>" -> a promise of an address this page can show
 export const photoName = (swap) => `${swap.id}@${String(swap.v ?? '').replace(/[^\w-]/g, '').slice(0, 24)}`;
 const keptAs = (name, kind = KEPT) => new URL(`shared/${kind}/${name}`, ROOT).href;   // never requested: only the name the browser keeps it under

@@ -367,7 +367,7 @@ export async function savePhoto(id, blob, about = {}) {
   const fields = {
     data: { bytesValue: await base64(blob) },
     type: { stringValue: blob.type },
-    ...encodeFields({ photoOf: String(about.key || ''), width: Math.round(about.width || 0), height: Math.round(about.height || 0), savedAt: new Date() }),   // photoOf: the page photo it stands in for, or "staff" for a portrait in the Staff list
+    ...encodeFields({ photoOf: String(about.key || ''), width: Math.round(about.width || 0), height: Math.round(about.height || 0), savedAt: new Date() }),   // photoOf: the page photo it stands in for, "staff" for a portrait in the Staff list, or "testimonial" for the picture beside one
   };
   const mask = Object.keys(fields).map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
   await call(`content/${id}`, { method: 'PATCH', query: mask, body: { fields } });

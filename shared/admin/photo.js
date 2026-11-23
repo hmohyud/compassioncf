@@ -3,7 +3,7 @@
 // drops what cameras write into a file (where and when it was taken).
 //
 // Used by "Edit this page" (bar.js) for a photo put in place of one of the pages' own, and by the editor's
-// Staff list (app.js) for a portrait.
+// lists (app.js): a staff member's portrait, and the small picture beside a testimonial.
 
 import { PHOTO_LIMIT } from './session.js';
 
@@ -16,7 +16,8 @@ const asJpeg = (canvas, quality) => new Promise((resolve) => canvas.toBlob(resol
 // ax, ay  the part of the photo that is kept when it is too wide or too tall for that shape: 0 is its left or
 //         top edge, 1 its right or bottom edge
 // shown   how wide the place is on the page, in the page's own pixels
-export async function preparePhoto(file, { shape = 0, ax = 0.5, ay = 0.5, shown = 0 } = {}) {
+// most    for a place that is small on every screen: the most pixels across the kept picture is ever given
+export async function preparePhoto(file, { shape = 0, ax = 0.5, ay = 0.5, shown = 0, most = 0 } = {}) {
   if (!file.type.startsWith('image/')) throw new Error('That file isn’t a picture. Choose a JPEG or PNG photo.');
   if (file.size > 40 * 1024 * 1024) throw new Error('That photo is over 40 MB. Choose a smaller file.');
   let picture;
@@ -34,7 +35,7 @@ export async function preparePhoto(file, { shape = 0, ax = 0.5, ay = 0.5, shown 
   const sy = Math.round((picture.height - sh) * ay);
   // Twice the width it is shown at (for sharp screens), within sensible bounds, and never more than the photo has.
   let width = Math.max(2 * shown, want >= 1 ? 1200 : 600);
-  width = Math.min(width, sw, want >= 1 ? LONG_SIDE : LONG_SIDE * want);
+  width = Math.min(width, sw, want >= 1 ? LONG_SIDE : LONG_SIDE * want, most || Infinity);
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   let blob = null;

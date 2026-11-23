@@ -369,6 +369,10 @@ em { font-style: italic; }
 .said-item figcaption { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; margin-top: 16px; font-size: 15px; line-height: 1.45; }
 .said-item figcaption b { font-weight: 600; color: var(--ink); }
 .said-item figcaption span { color: var(--muted); }
+/* a small round picture of the person, when the editors gave one: beside their name, which then sits over the line about them */
+.said-item figcaption.with-face { flex-wrap: nowrap; align-items: center; gap: 12px; }
+.said-item figcaption.with-face > div { display: flex; flex-direction: column; min-width: 0; }
+.said-face { flex: none; width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: #efe4d6; }
 .said-item blockquote p, .said-item figcaption { overflow-wrap: anywhere; }   /* a web address or a very long word wraps inside its card */
 
 /* a soft card that closes a program page */

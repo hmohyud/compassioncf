@@ -383,14 +383,26 @@ function showSection(el) {
 const paragraphs = (text, rich, attrs = '') => String(text || '').replace(/\r\n?/g, '\n').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
   .map((p) => `<p${attrs}>${p.split('\n').map((line) => (rich ? inline(line.trim()) : esc(line.trim()))).join('<br>')}</p>`).join('\n    ');
 
-function quoteCard(q) {
+// A photo the editors gave a testimonial or a staff member is kept in the site's database (see "photos" in
+// shared/content.js): it has no address of its own, and is shown once it has been read. Until then its place
+// is empty.
+const NO_PICTURE = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+
+// A testimonial may carry a photo of the person: a small round picture beside their name, which then sits over
+// the line about them. It says nothing the name does not, so it has no description.
+function quoteCard(q, i) {
   const name = said(q.name);
   const about = said(q.about);
+  const who = `${name ? `<b>${esc(name)}</b>` : ''}${about ? `<span>${esc(about)}</span>` : ''}`;
+  const face = content.hasPhoto(q.photo)
+    ? `<img class="said-face" src="${NO_PICTURE}" alt="" width="44" height="44" data-said-photo="${i}"${content.isGray(q.photo) ? ' style="filter:grayscale(1)"' : ''}>`
+    : '';
+  const caption = face ? `<figcaption class="with-face">${face}${who ? `<div>${who}</div>` : ''}</figcaption>` : who ? `<figcaption>${who}</figcaption>` : '';
   return `<figure class="said-item" data-no-edit${AS_WRITTEN}>
   <blockquote>
     ${paragraphs(q.quote, false)}
   </blockquote>
-  ${name || about ? `<figcaption>${name ? `<b>${esc(name)}</b>` : ''}${about ? `<span>${esc(about)}</span>` : ''}</figcaption>` : ''}
+  ${caption}
 </figure>`;
 }
 
@@ -401,14 +413,29 @@ async function testimonials(el) {
     if (!slot || !found.length) return;
     slot.innerHTML = found.map(quoteCard).join('\n');
     showSection(el);
+    found.forEach((q, i) => {
+      const img = slot.querySelector(`[data-said-photo="${i}"]`);
+      if (!img) return;
+      content.photoUrl(q.photo, content.QUOTE_KEPT)
+        .then((url) => { img.src = url; })
+        .catch((err) => {
+          // A picture that can't be read: the testimonial is shown as one that was given none.
+          console.warn('[cms] a testimonial’s picture was not loaded:', err.message);
+          const caption = img.parentElement;
+          const who = caption.querySelector('div');
+          if (!who) { caption.remove(); return; }
+          caption.classList.remove('with-face');
+          caption.replaceChildren(...who.childNodes);
+        });
+    });
+    content.tidyPhotos(found.map((q) => q.photo), content.QUOTE_KEPT);
   } catch (err) {
     console.warn('[cms] testimonials unavailable:', err.message);
   }
 }
 
-// A portrait is a photo kept in the site's database (see "photos" in shared/content.js). Until it has been
-// read, its frame is empty; a person with no photo, or whose photo can't be read, is shown by their initials.
-const NO_PICTURE = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+// A staff member's portrait: until it has been read, its frame is empty; a person with no photo, or whose
+// photo can't be read, is shown by their initials.
 const initials = (name) => {
   const parts = name.split(/\s+/).map((w) => [...w].find((c) => /\p{L}/u.test(c)) || '').filter(Boolean);
   return (parts.length > 1 ? parts[0] + parts[parts.length - 1] : parts[0] || '').toUpperCase();
