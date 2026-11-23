@@ -8,6 +8,7 @@ import {
 } from '../content.js';
 import * as session from './session.js';
 import { ORIGINALS } from './originals.js';
+import { preparePhoto } from './photo.js';
 import { lang } from '../i18n.js';
 
 // The photos an editor may change (see PHOTO_SWAPS in session.js).
@@ -138,7 +139,11 @@ function pageLinks() {
   // The pages that list essays or events: the Essays page, and News and Updates, which lists both.
   const events = document.querySelector('[data-cms="events"]');
   const essays = document.querySelector('[data-cms="blog-list"][data-href^="post.html"]') || (events && document.querySelector('[data-cms="blog-list"]'));
-  return (essays ? `<a href="${ADMIN}#essays/new">New essay</a>` : '') + (events ? `<a href="${ADMIN}#events/new">Add an event</a>` : '');
+  // The pages that show a list kept in the editor: the Scholarship Fund page (testimonials) and the Board page (staff).
+  const said = document.querySelector('[data-cms="testimonials"]');
+  const staff = document.querySelector('[data-cms="staff"]');
+  return (essays ? `<a href="${ADMIN}#essays/new">New essay</a>` : '') + (events ? `<a href="${ADMIN}#events/new">Add an event</a>` : '')
+    + (said ? `<a href="${ADMIN}#testimonials">Edit testimonials</a>` : '') + (staff ? `<a href="${ADMIN}#staff">Edit staff</a>` : '');
 }
 
 function render() {
@@ -158,7 +163,6 @@ function render() {
        ${pageLinks()}
        <a href="${ADMIN}#essays">Essays</a>
        <a href="${ADMIN}#events">Events</a>
-       <a href="${ADMIN}#inbox">Inbox</a>
        <button type="button" data-ed="out">Sign out</button>`;
   document.documentElement.style.setProperty('--ed-bar', `${Math.round(bar.offsetHeight)}px`);   // the donation box, opened for editing, stays clear of the bar
 }
@@ -336,9 +340,6 @@ async function save() {
 
 /* ---------- photos ---------- */
 
-const LONG_SIDE = 1600;           // pixels on the longer side: enough for a photo across the page on a sharp screen
-const PHOTO_BYTES = 300 * 1024;   // what one photo should weigh at most: each visitor's first look at it is read from the database
-
 // The shape of the photo in a place (width over height): that of the file the page was built with.
 const shapeOf = (entry) => new Promise((resolve) => {
   if (entry.shape) { resolve(entry.shape); return; }
@@ -351,54 +352,17 @@ const shapeOf = (entry) => new Promise((resolve) => {
   probe.src = new URL(entry.src, document.baseURI).href;
 });
 
-const asJpeg = (canvas, quality) => new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
-
-// Every new photo is redrawn before it is kept: cut to the shape of the photo it replaces (so nothing around
-// it moves), sized for the page, and saved as a JPEG light enough for the database. Redrawing also drops what
-// cameras write into a file (where and when it was taken).
-async function prepare(file, entry) {
-  if (!file.type.startsWith('image/')) throw new Error('That file isn’t a picture. Choose a JPEG or PNG photo.');
-  if (file.size > 40 * 1024 * 1024) throw new Error('That photo is over 40 MB. Choose a smaller file.');
-  let picture;
-  try {
-    picture = await createImageBitmap(file);
-  } catch {
-    throw new Error('That file couldn’t be read as a photo. Try a JPEG or PNG.');
-  }
-  const shape = (await shapeOf(entry)) || picture.width / picture.height;
-  // The part of the new photo that is kept: as much of it as fits the shape, placed the way the page places
-  // a photo that is too wide or too tall for its frame (a portrait keeps its top).
+// Every new photo is redrawn before it is kept (photo.js): cut to the shape of the photo it replaces, so
+// nothing around it moves, and placed the way the page places a photo that is too wide or too tall for its
+// frame (a portrait keeps its top).
+function prepare(file, entry) {
   const place = getComputedStyle(entry.el).objectPosition.split(' ').map((p) => (p.endsWith('%') ? parseFloat(p) / 100 : 0.5));
-  const ax = Number.isFinite(place[0]) ? place[0] : 0.5;
-  const ay = Number.isFinite(place[1]) ? place[1] : 0.5;
-  let sw = picture.width;
-  let sh = picture.height;
-  if (sw / sh > shape) sw = Math.round(sh * shape); else sh = Math.round(sw / shape);
-  const sx = Math.round((picture.width - sw) * ax);
-  const sy = Math.round((picture.height - sh) * ay);
-  // Twice the width it is shown at (for sharp screens), within sensible bounds, and never more than the photo has.
-  let width = Math.max(2 * (entry.el.getBoundingClientRect().width || 0), shape >= 1 ? 1200 : 600);
-  width = Math.min(width, sw, shape >= 1 ? LONG_SIDE : LONG_SIDE * shape);
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  let blob = null;
-  for (let attempt = 0; attempt < 6 && !(blob && blob.size <= PHOTO_BYTES); attempt++) {
-    canvas.width = Math.max(1, Math.round(width));
-    canvas.height = Math.max(1, Math.round(width / shape));
-    ctx.fillStyle = '#fff';   // behind a picture with see-through parts
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(picture, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-    for (const quality of [0.84, 0.74, 0.64]) {
-      blob = await asJpeg(canvas, quality);
-      if (blob && blob.size <= PHOTO_BYTES) break;
-    }
-    width *= 0.82;   // if it is still too heavy, the next try is a little smaller
-  }
-  if (picture.close) picture.close();
-  if (!blob) throw new Error('That photo couldn’t be prepared. Try a different file.');
-  if (blob.size > session.PHOTO_LIMIT) throw new Error('That photo is still too large after shrinking. Try a simpler picture.');
-  return { blob, width: canvas.width, height: canvas.height };
+  return preparePhoto(file, {
+    shape: () => shapeOf(entry),
+    ax: Number.isFinite(place[0]) ? place[0] : 0.5,
+    ay: Number.isFinite(place[1]) ? place[1] : 0.5,
+    shown: entry.el.getBoundingClientRect().width || 0,
+  });
 }
 
 function choose(entry) {

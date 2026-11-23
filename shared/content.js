@@ -218,17 +218,21 @@ export function setGray(el, on) {
 }
 
 // A stored photo is fetched from the database once and then kept by the browser under its name and version,
-// so it is read again only when an editor has changed it.
+// so it is read again only when an editor has changed it. What the browser keeps is filed by what the photo
+// is for: KEPT holds the photos put in place of the pages' own, STAFF_KEPT the portraits of the people in the
+// editor's Staff list (shared/cms.js), so that tidying one never throws out the other.
+const KEPT = 'kept-photo';
+export const STAFF_KEPT = 'kept-staff-photo';
 const photoUrls = new Map();   // "<photo>@<version>" -> a promise of an address this page can show
 export const photoName = (swap) => `${swap.id}@${String(swap.v ?? '').replace(/[^\w-]/g, '').slice(0, 24)}`;
-const keptAs = (name) => new URL(`shared/kept-photo/${name}`, ROOT).href;   // never requested: only the name the browser keeps it under
+const keptAs = (name, kind = KEPT) => new URL(`shared/${kind}/${name}`, ROOT).href;   // never requested: only the name the browser keeps it under
 const photoShelf = async () => { try { return await caches.open('ccf-photos'); } catch { return null; } };   // not offered in every browser mode
 
-async function loadPhoto(swap) {
+async function loadPhoto(swap, kind) {
   const name = photoName(swap);
   const shelf = await photoShelf();
   let kept = null;
-  try { kept = shelf && await shelf.match(keptAs(name)); } catch { /* read it from the database instead */ }
+  try { kept = shelf && await shelf.match(keptAs(name, kind)); } catch { /* read it from the database instead */ }
   if (kept) return URL.createObjectURL(await kept.blob());
   const res = await fetch(`${DB}/content/${swap.id}?mask.fieldPaths=data&mask.fieldPaths=type`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -240,30 +244,31 @@ async function loadPhoto(swap) {
   const bytes = new Uint8Array(raw.length);
   for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
   const blob = new Blob([bytes], { type });
-  try { if (shelf) await shelf.put(keptAs(name), new Response(blob, { headers: { 'Content-Type': type } })); } catch { /* shown all the same */ }
+  try { if (shelf) await shelf.put(keptAs(name, kind), new Response(blob, { headers: { 'Content-Type': type } })); } catch { /* shown all the same */ }
   return URL.createObjectURL(blob);
 }
 
-export function photoUrl(swap) {
+export function photoUrl(swap, kind = KEPT) {
   const name = photoName(swap);
-  if (!photoUrls.has(name)) photoUrls.set(name, loadPhoto(swap).catch((err) => { photoUrls.delete(name); throw err; }));
+  if (!photoUrls.has(name)) photoUrls.set(name, loadPhoto(swap, kind).catch((err) => { photoUrls.delete(name); throw err; }));
   return photoUrls.get(name);
 }
 
 // Used by the editor right after it has stored a photo: this browser has it already.
-export async function keepPhoto(swap, blob) {
+export async function keepPhoto(swap, blob, kind = KEPT) {
   const name = photoName(swap);
   photoUrls.set(name, Promise.resolve(URL.createObjectURL(blob)));
   const shelf = await photoShelf();
-  try { if (shelf) await shelf.put(keptAs(name), new Response(blob, { headers: { 'Content-Type': blob.type } })); } catch { /* it will be fetched when needed */ }
+  try { if (shelf) await shelf.put(keptAs(name, kind), new Response(blob, { headers: { 'Content-Type': blob.type } })); } catch { /* it will be fetched when needed */ }
 }
 
-// Forgets the photos this browser keeps that no saved change names any more.
-async function tidyPhotos(swaps) {
+// Forgets the photos of one kind that this browser keeps and that are not among `photos` any more.
+export async function tidyPhotos(photos, kind = KEPT) {
   const shelf = await photoShelf();
   if (!shelf) return;
-  const named = new Set(Object.values(swaps).filter(hasPhoto).map((swap) => keptAs(photoName(swap))));
-  try { for (const req of await shelf.keys()) if (!named.has(req.url)) await shelf.delete(req); } catch { /* nothing depends on it */ }
+  const folder = keptAs('', kind);
+  const named = new Set(photos.filter(hasPhoto).map((photo) => keptAs(photoName(photo), kind)));
+  try { for (const req of await shelf.keys()) if (req.url.startsWith(folder) && !named.has(req.url)) await shelf.delete(req); } catch { /* nothing depends on it */ }
 }
 
 // Shows one photo as a saved change (or the editor's choice, with its preview) says: which picture, in
@@ -379,7 +384,7 @@ export const ready = fetchChanges()
     setEdits(now.edits);
     setImages(now.images);
     setDatesOff(now.datesOff);
-    if (hadPhotos || Object.values(now.images).some(hasPhoto)) tidyPhotos(now.images);
+    if (hadPhotos || Object.values(now.images).some(hasPhoto)) tidyPhotos(Object.values(now.images));
   })
   .catch((err) => console.warn('[content] changes not loaded:', err.message));
 

@@ -1,28 +1,30 @@
-// The editor at /admin/: sign in with Google, then write essays, add events, read what the forms collected,
-// and see the wording changed on the pages. Everything is read from and saved to the site's own
-// database as the signed-in person (see session.js); the page itself holds no content.
+// The editor at /admin/: sign in with Google, then write essays, add events, testimonials and staff members,
+// read the mailing list, and see the wording changed on the pages. Everything is read from and saved to the
+// site's own database as the signed-in person (see session.js); the page itself holds no content.
 //
-// Sections follow the address: #essays, #essays/new, #essays/<id>, #events…, #inbox, #newsletter, #text, #people.
+// Sections follow the address: #essays, #essays/new, #essays/<id>, #events…, #testimonials…, #staff…,
+// #newsletter, #text, #people.
+//
+// (Until 22 November 2026 there was an Inbox too, for messages sent through the contact form the site had
+// before the foundation's Jotform took its place. The messages it held are still in the database, in
+// contactSubmissions; the tab and its code are in git history.)
 
 import * as session from './session.js';
-import { markdown, splitTitle, toDate, lastDay, PUBLISHED_SITE } from '../cms.js';
-import { fetchChanges, fetchEdits, setEdits, setImages, setDatesOff, isStored, hasPhoto, isGray, photoUrl, isCurrent, sanitize, TEXT_DOC, TEXT_FIELD, IMAGE_FIELD, DATES_FIELD } from '../content.js';
+import { markdown, splitTitle, toDate, lastDay, inOrder, PUBLISHED_SITE } from '../cms.js';
+import { fetchChanges, fetchEdits, setEdits, setImages, setDatesOff, isStored, hasPhoto, isGray, photoUrl, keepPhoto, isCurrent, sanitize, TEXT_DOC, TEXT_FIELD, IMAGE_FIELD, DATES_FIELD, STAFF_KEPT } from '../content.js';
 import { EARLIER, ORIGINALS, WRITTEN_IN } from './originals.js';
+import { preparePhoto } from './photo.js';
 
 const root = document.querySelector('[data-admin-app]');
 const SITE = new URL('../../', import.meta.url).href;
 document.head.append(Object.assign(document.createElement('link'), { rel: 'stylesheet', href: new URL('./admin.css', import.meta.url).href }));
 
-const TABS = [['essays', 'Essays'], ['events', 'Events'], ['inbox', 'Inbox'], ['newsletter', 'Mailing list'], ['text', 'Text and photos'], ['people', 'People']];
+const TABS = [['essays', 'Essays'], ['events', 'Events'], ['testimonials', 'Testimonials'], ['staff', 'Staff'], ['newsletter', 'Mailing list'], ['text', 'Text and photos'], ['people', 'People']];
 // The keepers of the list of editors: always editors themselves, and the ones who can add and remove others.
 // The database's rules name them by their Google addresses, which are kept out of this repository; this is
 // only how the editor refers to them, and has to be changed together with the rules.
 const KEEPERS = ['Thom Bond', 'Debra Chew', 'Hyder Mohyuddin'];
 const keepers = (last) => `${KEEPERS.slice(0, -1).join(', ')} ${last} ${KEEPERS[KEEPERS.length - 1]}`;
-// Notes in the inbox that came from somewhere other than the Contact page, by their subject line.
-// "Volunteer sign-up" is from the volunteer page the site used to have; "Mailing list sign-up" is what
-// shared/forms.js sends when the database won't keep a name and place beside a mailing-list address.
-const NOTE_BADGES = { 'Volunteer sign-up': 'Volunteer', 'Mailing list sign-up': 'Mailing list' };
 
 /* ---------- small helpers ---------- */
 
@@ -34,7 +36,6 @@ const longDate = (d) => (d ? d.toLocaleDateString('en-US', { year: 'numeric', mo
 const dateTime = (d) => (d ? `${longDate(d)}, ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : '');
 const fromDay = (day, time = '12:00') => { const [y, m, d] = day.split('-').map(Number); const [hh, mm] = time.split(':').map(Number); return new Date(y, m - 1, d, hh, mm); };
 const isDayOnly = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
-const isEmail = (s) => /^[^\s@<>"'?&]+@[^\s@<>"'?&]+\.[^\s@<>"'?&]+$/.test(s || '');
 const plainText = (html) => { const t = document.createElement('template'); t.innerHTML = sanitize(html); return t.content.textContent.replace(/\s+/g, ' ').trim(); };
 
 const view = () => root.querySelector('[data-view]');
@@ -372,26 +373,269 @@ async function saveEvent(form) {
   return 'Saved. The change is live.';
 }
 
-/* ---------- what the forms collected ---------- */
+/* ---------- lists in an order the editors choose: testimonials and staff ---------- */
 
-async function inbox() {
-  loading('Loading messages…');
-  const items = (await session.list('contactSubmissions')).sort((a, b) => (toDate(b.submittedAt) || 0) - (toDate(a.submittedAt) || 0));
+// Each record carries a number, `order`; a list reads from the lowest to the highest (inOrder, which the pages
+// use too). A new record goes last.
+const nextPlace = (items) => items.reduce((max, item) => (Number.isFinite(item.order) ? Math.max(max, item.order) : max), 0) + 1;
+const line = (v) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '');
+const clipped = (text, n = 150) => { const s = line(text); return s.length > n ? `${s.slice(0, n).replace(/\s+\S*$/, '')}…` : s; };
+
+// The two arrows beside each row of such a list.
+const moves = (collection, id, i, n) => `<span class="adm-moves">
+        <button type="button" data-move="${collection}/${esc(encodeURIComponent(id))}/-1" aria-label="Move up" title="Move up"${i === 0 ? ' disabled' : ''}>↑</button>
+        <button type="button" data-move="${collection}/${esc(encodeURIComponent(id))}/1" aria-label="Move down" title="Move down"${i === n - 1 ? ' disabled' : ''}>↓</button></span>`;
+
+// Moves one record a place up (-1) or down (1). Usually that is one change: the record's number becomes one
+// between its new neighbours' numbers. If the numbers can't say that (two the same, or one missing), the whole
+// list is numbered afresh in its new order.
+async function moveItem(collection, id, step) {
+  const items = (await session.list(collection)).sort(inOrder);
+  const from = items.findIndex((item) => item.id === id);
+  const to = from + step;
+  if (from < 0 || to < 0 || to >= items.length) return;
+  const next = [...items];
+  next.splice(to, 0, next.splice(from, 1)[0]);
+  const first = to === 0;
+  const last = to === next.length - 1;
+  const lo = first ? null : next[to - 1].order;
+  const hi = last ? null : next[to + 1].order;
+  const at = first ? hi - 1 : last ? lo + 1 : (lo + hi) / 2;
+  const sound = items.every((item) => Number.isFinite(item.order)) && new Set(items.map((item) => item.order)).size === items.length;
+  if (sound && Number.isFinite(at) && (first || at > lo) && (last || at < hi)) {
+    await session.update(collection, id, { order: at });
+  } else {
+    for (const [n, item] of next.entries()) if (item.order !== n + 1) await session.update(collection, item.id, { order: n + 1 });
+  }
+}
+
+/* ---------- testimonials ---------- */
+
+async function testimonials(id) {
+  if (id) return testimonialForm(id);
+  loading('Loading testimonials…');
+  const items = (await session.list('testimonials')).sort(inOrder);
   view().innerHTML = `
     ${takeFlash()}
-    <div class="adm-head"><div><h2>Inbox</h2><p>Messages sent through the Contact page until November 2026. Since then the Contact page uses the foundation’s Jotform, and new messages arrive there.</p></div><p class="adm-meta">${items.length} message${items.length === 1 ? '' : 's'}</p></div>
-    ${items.length ? `<ul class="adm-list">${items.map((m) => `
-      <li class="adm-msg">
-        <header><span class="adm-title">${esc(m.subject || '(no subject)')}${Object.hasOwn(NOTE_BADGES, m.subject) ? `<span class="adm-badge">${NOTE_BADGES[m.subject]}</span>` : ''}</span><span class="adm-meta">${esc(dateTime(toDate(m.submittedAt)))}</span></header>
-        <p class="adm-sub">From <b>${esc(m.name || 'someone')}</b>${isEmail(m.email) ? ` · <a href="mailto:${esc(m.email)}">${esc(m.email)}</a>` : m.email ? ` · ${esc(m.email)}` : ''}</p>
-        <pre>${esc(m.message || '')}</pre>
-        <div class="adm-actions">
-          ${isEmail(m.email) ? `<a class="btn btn-ink sm" href="mailto:${esc(m.email)}?subject=${encodeURIComponent(`Re: ${m.subject || 'your message'}`)}">Reply by email</a>` : ''}
-          <span class="spacer"></span>
-          <button type="button" class="adm-danger sm" data-del="contactSubmissions/${esc(m.id)}" data-after="#inbox" data-done="Message deleted.">Delete</button>
-        </div>
-      </li>`).join('')}</ul>` : '<p class="adm-empty">No messages yet.</p>'}`;
+    <div class="adm-head">
+      <div><h2>Testimonials</h2><p>Shown on the <a href="${SITE}programs/scholarship-fund/" target="_blank" rel="noopener">Scholarship Fund page</a>, in a section of their own and in this order. With none here, the page has no such section.</p></div>
+      <a class="btn btn-sun sm" href="#testimonials/new">Add a testimonial</a>
+    </div>
+    <p class="adm-note" data-note role="status"></p>
+    ${items.length ? `<ul class="adm-list">${items.map((q, i) => `
+      <li class="adm-ordered"><a class="adm-row" href="#testimonials/${encodeURIComponent(q.id)}">
+        <span><span class="adm-title">${esc(clipped(q.quote) || '(empty)')}</span><span class="adm-sub">${esc([line(q.name), line(q.about)].filter(Boolean).join(' · '))}</span></span></a>
+        ${moves('testimonials', q.id, i, items.length)}</li>`).join('')}</ul>` : '<p class="adm-empty">No testimonials yet. Press “Add a testimonial” to add the first one.</p>'}`;
 }
+
+async function testimonialForm(id) {
+  const isNew = id === 'new';
+  let q = { quote: '', name: '', about: '' };
+  if (!isNew) { loading('Opening the testimonial…'); q = await session.get('testimonials', id); }
+  view().innerHTML = `
+    <a class="adm-back" href="#testimonials">← All testimonials</a>
+    ${takeFlash()}
+    <form class="adm-edit form" data-form="testimonial" data-id="${esc(id)}">
+      <div class="adm-head"><div><h2>${isNew ? 'Add a testimonial' : 'Edit testimonial'}</h2></div>
+        ${isNew ? '' : `<a href="${SITE}programs/scholarship-fund/" target="_blank" rel="noopener">See it on the site →</a>`}</div>
+      <div class="field"><label for="t-quote">What they said <small>(no quotation marks needed; leave an empty line between paragraphs)</small></label><textarea id="t-quote" name="quote" required maxlength="3000" style="min-height:180px">${esc(q.quote || '')}</textarea></div>
+      <div class="form-row">
+        <div class="field"><label for="t-name">Who said it <small>(optional: a name, or words such as “A scholarship recipient”)</small></label><input id="t-name" name="name" maxlength="120" value="${esc(q.name || '')}"></div>
+        <div class="field"><label for="t-about">About them <small>(optional: for example a place, or a year)</small></label><input id="t-about" name="about" maxlength="160" value="${esc(q.about || '')}"></div>
+      </div>
+      <div class="adm-actions">
+        <button class="btn btn-sun" type="submit">Save</button>
+        <span class="adm-note" data-note role="status"></span>
+        <span class="spacer"></span>
+        ${isNew ? '' : `<button type="button" class="adm-danger" data-del="testimonials/${esc(encodeURIComponent(id))}" data-after="#testimonials" data-done="Testimonial deleted.">Delete testimonial</button>`}
+      </div>
+    </form>`;
+}
+
+async function saveTestimonial(form) {
+  const f = form.elements;
+  const id = form.dataset.id;
+  const data = { quote: f.quote.value.replace(/\r\n?/g, '\n').trim(), name: line(f.name.value), about: line(f.about.value), updatedAt: new Date() };
+  if (!data.quote) throw new session.Fail('other', 'Type what they said first.');
+  if (id === 'new') {
+    data.order = nextPlace(await session.list('testimonials'));
+    data.createdAt = new Date();
+    await session.create('testimonials', data);
+    flash = 'Testimonial added. It is on the Scholarship Fund page now.';
+    return go('#testimonials');
+  }
+  await session.update('testimonials', id, data);
+  return 'Saved. The change is live.';
+}
+
+/* ---------- staff ---------- */
+
+// The frame the Board page gives a portrait (.portrait img in style.css): three wide to four tall, keeping the
+// top of a picture that is too tall, and shown about 300 pixels wide.
+const PORTRAIT = { shape: 3 / 4, ax: 0.5, ay: 0.22, shown: 300 };
+// The portrait in the open form: the photo the record has now (had), a new one that has been prepared (picked),
+// and whether the photo it has was taken off (off). Nothing is stored until the form is saved.
+let portrait = null;
+
+async function staff(id) {
+  if (id) return staffForm(id);
+  loading('Loading the staff…');
+  const items = (await session.list('staff')).sort(inOrder);
+  view().innerHTML = `
+    ${takeFlash()}
+    <div class="adm-head">
+      <div><h2>Staff</h2><p>Shown on the <a href="${SITE}board/" target="_blank" rel="noopener">Board page</a>, after the board members, in a section of their own and in this order. With nobody here, the page has no such section. The board members are part of the page itself: change their words and photos there, with “Edit this page”.</p></div>
+      <a class="btn btn-sun sm" href="#staff/new">Add a staff member</a>
+    </div>
+    <p class="adm-note" data-note role="status"></p>
+    ${items.length ? `<ul class="adm-list">${items.map((p, i) => `
+      <li class="adm-ordered"><a class="adm-row" href="#staff/${encodeURIComponent(p.id)}">
+        <span><span class="adm-title">${esc(line(p.name) || '(no name)')}${hasPhoto(p.photo) ? '' : '<span class="adm-badge quiet">No photo</span>'}</span><span class="adm-sub">${esc(line(p.role))}</span></span></a>
+        ${moves('staff', p.id, i, items.length)}</li>`).join('')}</ul>` : '<p class="adm-empty">Nobody yet. Press “Add a staff member” to add the first one.</p>'}`;
+}
+
+async function staffForm(id) {
+  const isNew = id === 'new';
+  let p = { name: '', role: '', bio: '', photo: null };
+  if (!isNew) { loading('Opening the staff member…'); p = await session.get('staff', id); }
+  if (portrait?.picked) URL.revokeObjectURL(portrait.picked.preview);
+  portrait = { had: hasPhoto(p.photo) ? p.photo : null, picked: null, off: false };
+  view().innerHTML = `
+    <a class="adm-back" href="#staff">← All staff</a>
+    ${takeFlash()}
+    <form class="adm-edit form" data-form="staff" data-id="${esc(id)}">
+      <div class="adm-head"><div><h2>${isNew ? 'Add a staff member' : 'Edit staff member'}</h2></div>
+        ${isNew ? '' : `<a href="${SITE}board/" target="_blank" rel="noopener">See it on the site →</a>`}</div>
+      <div class="form-row">
+        <div class="field"><label for="s-name">Name</label><input id="s-name" name="name" required maxlength="120" value="${esc(p.name || '')}"></div>
+        <div class="field"><label for="s-role">Role <small>(optional: shown above the name)</small></label><input id="s-role" name="role" maxlength="160" value="${esc(p.role || '')}"></div>
+      </div>
+      <div class="field"><label for="s-bio">About them <small>(leave an empty line between paragraphs)</small></label><textarea id="s-bio" name="bio" maxlength="6000" style="min-height:220px">${esc(p.bio || '')}</textarea></div>
+      <div class="field">
+        <label for="s-photo">Photo <small>(optional: it is cut to the shape of the portraits on the Board page, keeping the top of the picture)</small></label>
+        <div class="adm-portrait">
+          <div class="adm-portrait-frame"><img data-portrait alt="" hidden><span data-portrait-none>No photo</span></div>
+          <div class="adm-portrait-acts">
+            <input id="s-photo" class="adm-file" type="file" accept="image/*" data-portrait-file>
+            <button type="button" class="adm-link" data-act="portrait-off" hidden>Remove the photo</button>
+            <label class="adm-check"><input type="checkbox" name="gray"${isGray(p.photo) ? ' checked' : ''}> Grayscale <small>(the board’s portraits are black and white)</small></label>
+            <span class="adm-note" data-portrait-note role="status"></span>
+          </div>
+        </div>
+      </div>
+      <div class="adm-actions">
+        <button class="btn btn-sun" type="submit">Save</button>
+        <span class="adm-note" data-note role="status"></span>
+        <span class="spacer"></span>
+        ${isNew ? '' : `<button type="button" class="adm-danger" data-del="staff/${esc(encodeURIComponent(id))}" data-after="#staff" data-done="Staff member deleted.">Delete staff member</button>`}
+      </div>
+    </form>`;
+  showPortrait();
+}
+
+// Shows the portrait the form holds now, and what can be done with it.
+function showPortrait() {
+  const img = view()?.querySelector('[data-portrait]');
+  if (!img || !portrait) return;
+  const none = view().querySelector('[data-portrait-none]');
+  const has = !!portrait.picked || (!!portrait.had && !portrait.off);
+  img.hidden = !has;
+  none.hidden = has;
+  none.textContent = 'No photo';
+  view().querySelector('[data-act="portrait-off"]').hidden = !has;
+  img.style.filter = view().querySelector('input[name="gray"]').checked ? 'grayscale(1)' : '';
+  if (portrait.picked) { img.src = portrait.picked.preview; return; }
+  if (!has) { img.removeAttribute('src'); return; }
+  const wanted = portrait.had;
+  photoUrl(wanted, STAFF_KEPT)
+    .then((url) => { if (img.isConnected && portrait && portrait.had === wanted && !portrait.picked && !portrait.off) img.src = url; })
+    .catch(() => { if (img.isConnected && portrait && portrait.had === wanted && !portrait.picked) { img.hidden = true; none.hidden = false; none.textContent = 'This photo couldn’t be loaded'; } });
+}
+
+// A photo chosen in the form is prepared at once (cut to the portrait's shape and made light), so the form
+// shows it as the page will; it is stored only when the form is saved.
+async function choosePortrait(input) {
+  const file = input.files && input.files[0];
+  const note = view().querySelector('[data-portrait-note]');
+  if (!file || !portrait) return;
+  const mine = portrait;
+  note.className = 'adm-note';
+  note.textContent = 'Preparing the photo…';
+  try {
+    const made = await preparePhoto(file, PORTRAIT);
+    if (portrait !== mine || !note.isConnected) return;   // the form was left meanwhile
+    if (mine.picked) URL.revokeObjectURL(mine.picked.preview);
+    mine.picked = { ...made, preview: URL.createObjectURL(made.blob) };
+    mine.off = false;
+    note.textContent = '';
+    dirty = true;
+    showPortrait();
+  } catch (err) {
+    if (portrait !== mine || !note.isConnected) return;
+    input.value = '';
+    note.className = 'adm-note bad';
+    note.textContent = `The photo wasn’t changed. ${err.message}`;
+  }
+}
+
+function dropPortrait() {
+  if (!portrait) return;
+  if (portrait.picked) URL.revokeObjectURL(portrait.picked.preview);
+  portrait.picked = null;
+  portrait.off = true;
+  const input = view().querySelector('[data-portrait-file]');
+  if (input) input.value = '';
+  dirty = true;
+  showPortrait();
+}
+
+async function saveStaff(form) {
+  const f = form.elements;
+  const id = form.dataset.id;
+  const name = line(f.name.value);
+  if (!name) throw new session.Fail('other', 'Type their name first.');
+  const state = portrait || { had: null, picked: null, off: false };
+  // A new photo is stored first, under a name of its own, and only then named in the record the Board page
+  // reads, so that record never names a photo that isn't there.
+  let photo = state.had && !state.off ? { id: state.had.id, v: String(state.had.v ?? '') } : null;
+  let stored = null;
+  if (state.picked) {
+    stored = { id: session.newPhotoId(), v: Date.now().toString(36) };
+    await session.savePhoto(stored.id, state.picked.blob, { key: 'staff', width: state.picked.width, height: state.picked.height });
+    photo = { ...stored };
+  }
+  if (photo && f.gray.checked) photo.gray = true;
+  const data = { name, role: line(f.role.value), bio: f.bio.value.replace(/\r\n?/g, '\n').trim(), photo, updatedAt: new Date() };
+  try {
+    if (id === 'new') {
+      data.order = nextPlace(await session.list('staff'));
+      data.createdAt = new Date();
+      await session.create('staff', data);
+    } else {
+      await session.update('staff', id, data);
+    }
+  } catch (err) {
+    if (stored) session.removePhoto(stored.id).catch(() => {});   // the record wasn't saved, so nothing names the new photo
+    throw err;
+  }
+  if (stored) await keepPhoto(stored, state.picked.blob, STAFF_KEPT);
+  // The photo the record named before is removed, now that the record no longer points at it.
+  if (state.had && (!photo || photo.id !== state.had.id)) {
+    session.removePhoto(state.had.id).catch((err) => console.warn('[editor] an unused photo was not removed:', err.detail || err.message));
+  }
+  if (id === 'new') {
+    flash = 'Staff member added. They are on the Board page now.';
+    return go('#staff');
+  }
+  if (state.picked) URL.revokeObjectURL(state.picked.preview);
+  portrait = { had: photo, picked: null, off: false };
+  const input = form.querySelector('[data-portrait-file]');
+  if (input) input.value = '';
+  showPortrait();
+  return 'Saved. The change is live.';
+}
+
+/* ---------- the mailing list ---------- */
 
 // Anyone can type anything into the sign-up box, so only what is plainly an email address is copied or
 // downloaded. A spreadsheet program would run a cell beginning with = + - or @ as a formula, so a name or
@@ -556,7 +800,7 @@ async function whoCanEdit() {
   view().innerHTML = `
     ${takeFlash()}
     <div class="adm-head"><div><h2>People</h2>
-      <p>Who can sign in here and edit the site. Everyone on the list can change the pages, essays and events, and can see the mailing list and the old contact messages.</p></div></div>
+      <p>Who can sign in here and edit the site. Everyone on the list can change the pages, essays, events, testimonials and staff, and can see the mailing list.</p></div></div>
     <h3 class="adm-group">Always on the list</h3>
     <p class="adm-hint">${esc(keepers('and'))}. They look after this list: only they can add someone to it or take someone off it.</p>
     <h3 class="adm-group">Added</h3>
@@ -589,7 +833,7 @@ async function savePerson(form) {
   return go('#people');
 }
 
-const SECTIONS = { essays, events, inbox, newsletter, text, people: whoCanEdit };
+const SECTIONS = { essays, events, testimonials, staff, newsletter, text, people: whoCanEdit };
 
 /* ---------- wiring ---------- */
 
@@ -622,13 +866,18 @@ async function attempt(button, work) {
 root.addEventListener('submit', (e) => {
   e.preventDefault();
   const form = e.target;
-  const save = { essay: saveEssay, event: saveEvent, person: savePerson }[form.dataset.form];
+  const save = { essay: saveEssay, event: saveEvent, testimonial: saveTestimonial, staff: saveStaff, person: savePerson }[form.dataset.form];
   if (save) attempt(form.querySelector('button[type="submit"]'), async () => { const done = await save(form); dirty = false; return done; });
 });
 
 root.addEventListener('input', (e) => {
   if (e.target.closest('.adm-edit')) { dirty = true; leaving = false; const note = e.target.closest('form').querySelector('[data-note]'); if (note) note.textContent = ''; }
   if (e.target.id === 'e-content') preview();
+});
+
+root.addEventListener('change', (e) => {
+  if (e.target.matches('[data-portrait-file]')) choosePortrait(e.target);
+  if (e.target.matches('.adm-portrait input[name="gray"]')) showPortrait();
 });
 
 root.addEventListener('click', (e) => {
@@ -639,14 +888,36 @@ root.addEventListener('click', (e) => {
   if (act === 'copy') copyAddresses();
   if (act === 'csv') downloadAddresses();
   if (act === 'take-dates') attempt(e.target.closest('[data-act]'), takeDates);
+  if (act === 'portrait-off') dropPortrait();
 
   const md = e.target.closest('[data-md]');
   if (md) format(md.dataset.md);
 
+  // An arrow beside a row: move that record, then draw the list again with the same arrow in hand if it can be
+  // pressed again (for someone moving a row several places from the keyboard).
+  const move = e.target.closest('[data-move]');
+  if (move && !move.disabled) {
+    const [collection, id, step] = move.dataset.move.split('/').map(decodeURIComponent);
+    const again = move.dataset.move;
+    attempt(move, async () => {
+      await moveItem(collection, id, Number(step));
+      await route();
+      const same = [...root.querySelectorAll('[data-move]')].find((b) => b.dataset.move === again);
+      (same && !same.disabled ? same : same?.parentElement.querySelector('button:not(:disabled)'))?.focus();
+    });
+  }
+
   const del = e.target.closest('[data-del]');
   if (del && confirmTwice(del)) {
     const [collection, id] = del.dataset.del.split('/').map(decodeURIComponent);
-    attempt(del, async () => { await session.remove(collection, id); flash = del.dataset.done; go(del.dataset.after); });
+    // A staff member's portrait is a record of its own: it goes once the person's record no longer names it.
+    const photo = collection === 'staff' && portrait?.had ? portrait.had.id : '';
+    attempt(del, async () => {
+      await session.remove(collection, id);
+      if (photo) session.removePhoto(photo).catch((err) => console.warn('[editor] an unused photo was not removed:', err.detail || err.message));
+      flash = del.dataset.done;
+      go(del.dataset.after);
+    });
   }
 
   const undo = e.target.closest('[data-undo]');

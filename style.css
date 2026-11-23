@@ -289,7 +289,7 @@ em { font-style: italic; }
 .crumbs a { color: rgba(255, 255, 255, .78); text-decoration: none; transition: color .2s; }
 .crumbs a:hover { color: var(--gold); }
 .crumbs [aria-current] { color: rgba(255, 255, 255, .5); }
-.phero h1, .big, .prog h2, .member h2, .empty h2 { text-wrap: balance; }
+.phero h1, .big, .prog h2, .member h2, .member h3, .empty h2 { text-wrap: balance; }
 .lede, .prose p, .post-ex, .prog p { text-wrap: pretty; }
 .phero h1 { font: 400 clamp(42px, 5.8vw, 84px)/1.03 var(--serif); letter-spacing: -.025em; font-variation-settings: 'opsz' 144; }
 .phero-sub { margin-top: 14px; font: italic 300 clamp(22px, 2.4vw, 32px)/1.25 var(--serif); color: var(--gold); }
@@ -360,6 +360,17 @@ em { font-style: italic; }
 .voices b { display: block; font: 400 22px/1.2 var(--serif); color: var(--ink); }
 .voices span { display: block; margin-top: 8px; font-size: 14px; line-height: 1.45; color: var(--muted); }
 
+/* testimonials (scholarship fund): what the editor's Testimonials list holds, read from the database by shared/cms.js. The section is hidden while that list is empty */
+.said .said-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 26px; }
+.said-item { position: relative; margin: 0; padding: 30px 36px 28px 66px; border-radius: 22px; background: #fff; box-shadow: 0 18px 40px -28px rgba(60, 40, 90, .45); }
+.said-item::before { content: '\201C'; position: absolute; left: 24px; top: 16px; font: 400 66px/1 var(--serif); color: var(--amber); }
+.said-item blockquote p { font: 400 19px/1.62 var(--serif); color: var(--ink); }
+.said-item blockquote p + p { margin-top: 12px; }
+.said-item figcaption { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; margin-top: 16px; font-size: 15px; line-height: 1.45; }
+.said-item figcaption b { font-weight: 600; color: var(--ink); }
+.said-item figcaption span { color: var(--muted); }
+.said-item blockquote p, .said-item figcaption { overflow-wrap: anywhere; }   /* a web address or a very long word wraps inside its card */
+
 /* a soft card that closes a program page */
 .callout { position: relative; overflow: hidden; margin-top: 70px !important; padding: 42px 44px; border-radius: 28px; background: #fff; box-shadow: 0 30px 60px -36px rgba(60, 40, 90, .45); }
 .callout::before { content: ''; position: absolute; right: -90px; top: -90px; width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(circle, rgba(246, 184, 96, .32), transparent 70%); }
@@ -428,13 +439,20 @@ em { font-style: italic; }
 /* the board's portraits are black-and-white files. A photo an editor puts in a portrait's place is shown as it is, unless they switch Grayscale on for it (shared/content.js) */
 .portrait img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; object-position: center 22%; border-radius: 999px 999px 24px 24px; background: #e9dccb; }
 .member .kicker { margin-bottom: 10px; }
-.member h2 { font: 400 clamp(38px, 4.2vw, 56px)/1.04 var(--serif); color: var(--ink); letter-spacing: -.02em; margin-bottom: 24px; }
+.member h2, .member h3 { font: 400 clamp(38px, 4.2vw, 56px)/1.04 var(--serif); color: var(--ink); letter-spacing: -.02em; margin-bottom: 24px; }
 .member p:not(.kicker) { font-size: 18px; line-height: 1.75; color: #4b4562; margin-bottom: 16px; max-width: 40em; }
 .member p a { color: var(--red); text-underline-offset: 3px; }
 .member .social { margin-top: 28px; }
 .social.light h4 { font: 600 12px var(--sans); letter-spacing: .22em; text-transform: uppercase; color: var(--ink); margin-bottom: 12px; }
 .social.light a { border-color: rgba(20, 26, 68, .18); color: var(--ink); background: rgba(255, 255, 255, .6); }
 .social.light a:hover, .social.light a:focus-visible { color: #fff; background: var(--ink); border-color: var(--ink); }
+/* staff, after the board: the people in the editor's Staff list, read from the database by shared/cms.js. The section is hidden while that list is empty */
+.staff { margin-top: clamp(80px, 10vw, 120px); }
+.staff-head { display: flex; align-items: center; gap: 24px; margin-bottom: clamp(48px, 6vw, 76px); font: 400 clamp(34px, 4.4vw, 58px)/1.08 var(--serif); letter-spacing: -.02em; color: var(--ink); }
+.staff-head::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(20, 26, 68, .28), rgba(20, 26, 68, 0)); }
+[data-staff-list] .member :is(h3, p) { overflow-wrap: anywhere; }   /* a web address in what is written about someone wraps on a narrow screen */
+/* someone with no photo is shown by their initials, in the frame a portrait has */
+.portrait.blank span { display: grid; place-items: center; aspect-ratio: 3 / 4; border-radius: 999px 999px 24px 24px; background: #e9dccb; font: 300 clamp(48px, 6vw, 84px)/1 var(--serif); letter-spacing: .02em; color: rgba(20, 26, 68, .42); }
 
 /* founder (home) + board preview (about) */
 .founder { background: radial-gradient(ellipse at 15% 40%, #fde4c6, var(--cream) 55%); }
@@ -669,6 +687,7 @@ html:is(:lang(hi), :lang(ar)) :is(.hero h1, .phero h1) { font-size: clamp(38px, 
 [dir="rtl"] .facts li + li::before { left: auto; right: -2.5px; }
 [dir="rtl"] .pull { padding: 6px 34px 6px 0; }
 [dir="rtl"] .pull::before { left: auto; right: 0; }
+[dir="rtl"] .staff-head::after { background: linear-gradient(270deg, rgba(20, 26, 68, .28), rgba(20, 26, 68, 0)); }
 [dir="rtl"] .timeline { padding-left: 0; padding-right: 34px; }
 [dir="rtl"] .timeline::before { left: auto; right: 8px; }
 [dir="rtl"] .timeline li::before { left: auto; right: -31px; }
@@ -904,9 +923,13 @@ html:is(:lang(hi), :lang(ar)) :is(.hero h1, .phero h1) { font-size: clamp(38px, 
   .member .portrait, .founder .portrait { grid-column: 1; grid-row: 1 / span 2; max-width: none; padding: 4px; border-radius: 999px 999px 18px 18px; box-shadow: 0 22px 40px -26px rgba(120, 60, 40, .6); }
   .member .portrait img, .founder .portrait img { border-radius: 999px 999px 15px 15px; }
   .member .kicker, .founder .kicker { grid-column: 2; align-self: end; margin-bottom: 8px; font-size: 12px; letter-spacing: .18em; }
-  .member h2, .founder .big { grid-column: 2; align-self: start; margin-bottom: 0; font-size: clamp(26px, 7.8vw, 31px); }
+  .member h2, .member h3, .founder .big { grid-column: 2; align-self: start; margin-bottom: 0; font-size: clamp(26px, 7.8vw, 31px); }
   .member p:not(.kicker), .member .social, .founder p:not(.kicker), .founder .cta { grid-column: 1 / -1; }
-  .member h2 + p, .founder .big + p { margin-top: 26px; }
+  .member h2 + p, .member h3 + p, .founder .big + p { margin-top: 26px; }
+  .member.no-role h3 { grid-row: 1 / span 2; align-self: center; }   /* nobody's role above the name: the name sits beside the middle of the portrait */
+  .member .portrait.blank span { border-radius: 999px 999px 15px 15px; font-size: 34px; }
+  .staff { margin-top: 64px; }
+  .staff-head { gap: 16px; margin-bottom: 40px; }
   .founder .cta { margin-top: 24px; }
 
   /* ---- footer ---- */
@@ -933,6 +956,9 @@ html:is(:lang(hi), :lang(ar)) :is(.hero h1, .phero h1) { font-size: clamp(38px, 
   .prose h2 { font-size: 27px; margin-top: 52px; }
   .prose p { font-size: 17.5px; line-height: 1.7; }
   .pull { margin: 44px 0 !important; padding-left: 24px; font-size: 22px; }
+  .said-item { padding: 22px 22px 22px; border-radius: 20px; }
+  .said-item::before { position: static; display: block; height: 30px; font-size: 54px; }   /* the mark sits above the words, which keep the card's whole width */
+  .said-item blockquote p { font-size: 17.5px; }
   .aside { gap: 16px; }
   .give-card { padding: 32px 28px 30px; border-radius: 24px; }
   .give-card h3 { font-size: 27px; }

@@ -211,14 +211,15 @@ function claims(idToken) {
 }
 
 // Whether the signed-in person may edit. The database's rules decide that, so the question is put to the
-// database itself: only an editor is allowed to look at the inbox.
+// database itself: only an editor is allowed to look at the list of editors. (Until 22 November 2026 the
+// question was whether they could look at the inbox of contact messages, which the editor no longer has.)
 export async function mayEdit() {
   const s = session();
   if (!s) return false;
   try { if (sessionStorage.getItem(EDITOR_STORE) === s.uid) return true; } catch { /* private window */ }
   let ok = false;
   try {
-    await call('contactSubmissions', { query: 'pageSize=1' });
+    await call('editors', { query: 'pageSize=1' });
     ok = true;
   } catch (err) {
     if (err.kind !== 'denied') throw err;
@@ -366,7 +367,7 @@ export async function savePhoto(id, blob, about = {}) {
   const fields = {
     data: { bytesValue: await base64(blob) },
     type: { stringValue: blob.type },
-    ...encodeFields({ photoOf: String(about.key || ''), width: Math.round(about.width || 0), height: Math.round(about.height || 0), savedAt: new Date() }),
+    ...encodeFields({ photoOf: String(about.key || ''), width: Math.round(about.width || 0), height: Math.round(about.height || 0), savedAt: new Date() }),   // photoOf: the page photo it stands in for, or "staff" for a portrait in the Staff list
   };
   const mask = Object.keys(fields).map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
   await call(`content/${id}`, { method: 'PATCH', query: mask, body: { fields } });

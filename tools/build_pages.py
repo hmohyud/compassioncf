@@ -291,6 +291,16 @@ def callout(heading, paragraphs, label, lead=''):
 
 # ---------- programs ----------
 
+# Testimonials are kept in the site's editor (its "Testimonials" tab) and read from the database by shared/cms.js.
+# The page holds only the place for them, hidden until there is at least one testimonial to show. The heading's
+# words are in an attribute, not in the page's text, and are written out when the section is shown (so a reader
+# that runs no scripts is not shown a heading with nothing under it); from then on the heading is text like any
+# other, and can be reworded in the editor.
+TESTIMONIALS = '''<div class="said" data-cms="testimonials" hidden>
+            <h2 data-heading="Testimonials"></h2>
+            <div class="said-list" data-testimonials-list></div>
+          </div>'''
+
 fund_hero = phero('{r}', 'The Peace Engineering Scholarship Fund', [('Programs', '{r}programs/')], 'Program', 'The Peace Engineering Scholarship Fund', 'Ending Financial Gatekeeping in Peace Education',
     lede='Scholarships and logistical support, so that peace education is never limited by privilege or circumstance.')
 
@@ -308,6 +318,8 @@ fund_body = f'''<section class="pbody">
           </ul>
 
           <blockquote class="pull reveal">The Fund ensures that the benefits of peace education are not limited by privilege or circumstance.</blockquote>
+
+          {TESTIMONIALS}
 
           {callout('Give Someone the Opportunity to Learn', [
               ('', 'A gift of $240 provides one person with a full-year scholarship to the Compassion Course, and helps remove financial barriers to peace education.'),
@@ -591,6 +603,10 @@ about_body = f'''<section class="pbody">
 board_hero = phero('{r}', 'Board members', [('About', '{r}about/')], 'Board members', 'The people <em>behind</em> the work',
     lede='Meet the board guiding the Compassion Course Foundation.')
 
+# The board members are written into the page. Staff members are kept in the site's editor (its "Staff" tab) and
+# read from the database by shared/cms.js into the section after them, which stays hidden until there is at
+# least one. Its heading's words are in an attribute until then (see TESTIMONIALS above); once shown, the heading
+# can be reworded in the editor like any other text.
 board_body = f'''<section class="pbody">
       <div class="wrap members">
         <article class="member" id="thom-bond">
@@ -622,6 +638,10 @@ board_body = f'''<section class="pbody">
             <p>Hyder has a major in Computer Science and a minor in Visual Arts from the University of Chicago, and worked there on generative image research. A tutor since 2016, Hyder has also helped teach coding with Code Platoon and Code Your Dreams.</p>
           </div>
         </article>
+      </div>
+      <div class="wrap staff" data-cms="staff" hidden>
+        <h2 class="staff-head" data-heading="Staff"></h2>
+        <div class="members" data-staff-list></div>
       </div>
     </section>'''
 
@@ -916,7 +936,7 @@ notfound_body = f"""<section class="pbody">
       </div>
     </section>"""
 
-# ---------- the editor: sign-in, essays, events, inbox, mailing list. Everything in it is drawn by shared/admin/app.js ----------
+# ---------- the editor: sign-in, essays, events, testimonials, staff, mailing list. Everything in it is drawn by shared/admin/app.js ----------
 
 # This page is a tool, so it has no hero: the "no-hero" body class makes the header solid and starts
 # the editor right under it. The heading is there for screen readers only.
@@ -938,12 +958,12 @@ CMS_JS = '\n  <script type="module" src="{s}cms.js"></script>'
 PAGES = [
     ('about/index.html', 'About us', 'Why peace education matters, our history, and who we are: the Compassion Course Foundation, a 501(c)(3) nonprofit.', 'about', about_hero, about_body, ''),
     ('programs/index.html', 'Programs', 'The Peace Engineering Scholarship Fund, the Global Peace Education Research Initiative, the Archive Program and the Global Human Needs Observatory.', 'programs', programs_hero, programs_body, ''),
-    ('programs/scholarship-fund/index.html', 'The Peace Engineering Scholarship Fund', 'The Peace Engineering Scholarship Fund: scholarships and logistical support, so that peace education is never limited by privilege or circumstance.', 'programs', fund_hero, fund_body, ''),
+    ('programs/scholarship-fund/index.html', 'The Peace Engineering Scholarship Fund', 'The Peace Engineering Scholarship Fund: scholarships and logistical support, so that peace education is never limited by privilege or circumstance.', 'programs', fund_hero, fund_body, CMS_JS),
     ('programs/research-initiative/index.html', 'The Global Peace Education Research Initiative', 'The Global Peace Education Research Initiative: evaluating the impact of peace education training with robust science.', 'programs', research_hero, research_body, ''),
     ('programs/archive/index.html', 'The Archive Program', 'The Archive Program: a multilingual, global digital library preserving 25 years of peace education history.', 'programs', archive_hero, archive_body, ''),
     ('programs/global-needs-observatory/index.html', 'Global Human Needs Observatory', 'Global Human Needs Observatory: a needs-based framework and infrastructure for peace engineering. This program is forming.', 'programs', obs_hero, obs_body, ''),
     ('news/index.html', 'News and Updates', 'Essays, recommended podcast episodes, the Feelings and Needs List, upcoming dates and the mailing list of the Compassion Course Foundation.', 'news', news_hero, news_body, CMS_JS),
-    ('board/index.html', 'Board members', 'Meet the board guiding the Compassion Course Foundation.', 'about', board_hero, board_body, ''),
+    ('board/index.html', 'Board members', 'Meet the board guiding the Compassion Course Foundation.', 'about', board_hero, board_body, CMS_JS),
     ('blog/index.html', 'Essays', 'Essays and reflections from Thom Bond and the Compassion Course community.', 'news', blog_hero, blog_body, CMS_JS),
     ('blog/post.html', 'Essay', 'An essay from the Compassion Course Foundation.', 'news', post_hero, post_body, CMS_JS),
     ('contact/index.html', 'Contact us', 'Get in touch with the Compassion Course Foundation.', 'contact', contact_hero, contact_body, CONTACT_JS),

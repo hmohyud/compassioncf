@@ -134,11 +134,27 @@ a.adm-row:hover .adm-title { color: #d0664c; }
 .adm-danger.armed { background: var(--red); color: #fff; border-color: var(--red); }
 .adm-danger.sm { padding: 6px 14px; font-size: 13px; }
 
-.adm-msg { padding: 20px 4px; }
-.adm-msg header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 20px; align-items: baseline; }
-.adm-msg .adm-title { font-size: 19px; }
-.adm-msg pre { margin: 12px 0 14px; padding: 16px 18px; border-radius: 14px; background: var(--cream); font: 15.5px/1.65 var(--sans); color: var(--text); white-space: pre-wrap; word-break: break-word; }
-.adm-msg .adm-actions { padding: 0; }
+/* a list kept in an order the editors choose (testimonials, staff): each row has two arrows beside it */
+.adm-ordered { display: flex; align-items: center; gap: 10px; }
+.adm-ordered .adm-row { flex: 1; min-width: 0; grid-template-columns: minmax(0, 1fr); overflow-wrap: anywhere; }
+.adm-moves { display: flex; gap: 6px; flex: none; }
+.adm-moves button { width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(20, 26, 68, .16); background: #fff; font: 600 16px/1 var(--sans); color: var(--ink); cursor: pointer; }
+.adm-moves button:hover:not(:disabled) { border-color: var(--ink); }
+.adm-moves button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.adm-moves button:disabled { opacity: .3; cursor: default; }
+/* a staff member's portrait in the form, in the frame the Board page gives it */
+.adm-portrait { display: flex; flex-wrap: wrap; align-items: center; gap: 18px 26px; }
+.adm-portrait-frame { flex: none; width: 132px; padding: 4px; border-radius: 999px 999px 18px 18px; background: linear-gradient(160deg, var(--gold), var(--amber) 45%, var(--rose)); }
+.adm-portrait-frame img, .adm-portrait-frame span { display: block; width: 100%; aspect-ratio: 3 / 4; border-radius: 999px 999px 15px 15px; background: #e9dccb; object-fit: cover; }
+.adm-portrait-frame span { display: grid; place-items: center; padding: 0 10px; text-align: center; font: 500 13px/1.3 var(--sans); color: var(--muted); }
+.adm-portrait-frame [hidden] { display: none; }
+.adm-portrait-acts { flex: 1 1 260px; min-width: 0; display: grid; gap: 12px; justify-items: start; }
+.adm-portrait .adm-file { width: 100%; max-width: 100%; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; font: 15px/1.4 var(--sans); color: var(--text); }
+.adm-portrait .adm-file::file-selector-button { margin-right: 12px; padding: 9px 18px; border-radius: 999px; border: 1px solid rgba(20, 26, 68, .22); background: #fff; font: 600 14px var(--sans); color: var(--ink); cursor: pointer; }
+.adm-portrait .adm-file:focus { box-shadow: none; }
+.adm-portrait .adm-file:focus-visible { outline: 2px solid var(--amber); outline-offset: 4px; }
+.adm-portrait .adm-check input { width: 18px; height: 18px; padding: 0; flex: none; }
+.adm-portrait .adm-link[hidden] { display: none; }
 .adm-mail { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 20px; align-items: center; padding: 12px 4px; }
 .adm-mail b { font: 500 16px var(--sans); color: var(--ink); word-break: break-all; }
 .adm-swap { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--muted); }
@@ -167,6 +183,8 @@ a.adm-row:hover .adm-title { color: #d0664c; }
   .adm-tools button { padding: 10px 14px; font-size: 14px; }
   .adm-edit textarea.adm-text { font-size: 16px; }
   .adm-actions .btn, .adm-danger { min-height: 44px; }
+  .adm-moves button { width: 44px; height: 44px; }
+  .adm-portrait .adm-file::file-selector-button { padding: 12px 18px; }
   .adm-link { padding: 10px 0; }
   .ed-photo input { font-size: 16px; }
   .ed-photo button { padding: 10px 0; }

@@ -1,6 +1,6 @@
-// Live content from the site's own database: the essays and events its editor writes (the Firestore
-// collections blogPosts and events), fetched over Firestore's REST API, so a new essay or event shows
-// up here without editing this site.
+// Live content from the site's own database: the essays, events, testimonials and staff members its editor
+// keeps (the Firestore collections blogPosts, events, testimonials and staff), fetched over Firestore's REST
+// API, so a new essay, event, testimonial or staff member shows up here without editing this site.
 //
 // Pages opt in with a data-cms attribute:
 //   [data-cms="blog-list"]  cards into [data-posts]; data-href (link prefix, default "post.html?id="),
@@ -10,9 +10,14 @@
 //   [data-cms="blog-post"]  reads ?id= and fills the [data-post-*] slots
 //   [data-cms="events"]     upcoming events into [data-events-list], beside any dates written into
 //                           the page there; shows [data-events-empty] when the list ends up empty
+//   [data-cms="testimonials"]  the testimonials into [data-testimonials-list]; the container, which
+//                           carries the hidden attribute, is revealed only if there is at least one,
+//                           and its heading's words (data-heading) are written out only then
+//   [data-cms="staff"]      the staff members into [data-staff-list], revealed the same way
 //
-// No API key is sent. Events can be read by anyone; of the essays, only published ones can, and the
-// database refuses a request for essays that does not itself ask for published ones only.
+// No API key is sent. Events, testimonials and staff members can be read by anyone; of the essays, only
+// published ones can, and the database refuses a request for essays that does not itself ask for
+// published ones only.
 
 import * as content from './content.js';   // for the dates written into a page that have since become events (content.datesOff)
 import { t, th, ready as wordsReady, locale, translated, rtl } from './i18n.js';   // labels and dates in the visitor's language
@@ -348,6 +353,112 @@ async function events(el) {
   settle();
 }
 
-const mounts = { 'blog-list': blogList, 'blog-post': blogPost, events };
+/* ---------- testimonials and staff ---------- */
+
+// Two lists the editor keeps in an order of the editors' choosing: testimonials, shown on the Scholarship Fund
+// page, and staff members, shown on the Board page after the board. Each record carries a number, `order`;
+// a list reads from the lowest to the highest, and two records with the same number read older first.
+// Each has a section in its page that stays hidden until its list has something in it, so a page with an empty
+// list, or one whose list could not be read, simply has no such section.
+const placeOf = (item) => (typeof item.order === 'number' && Number.isFinite(item.order) ? item.order : Number.MAX_SAFE_INTEGER);
+export const inOrder = (a, b) => (placeOf(a) - placeOf(b)) || ((toDate(a.createdAt) || 0) - (toDate(b.createdAt) || 0));
+const said = (v) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '');
+
+// The section's heading is kept in an attribute, out of the page's text, until the section has something to
+// show: a reader that does not run scripts (a search engine, or a tool that reads a page for someone) is then
+// not shown a heading with nothing under it. Once written out it is a piece of the page's text like any other:
+// the editor can reword it, and it is put into the visitor's language (content.adopt).
+function showSection(el) {
+  const heading = el.querySelector('[data-heading]');
+  if (heading && !heading.dataset.editable) {
+    heading.textContent = heading.dataset.heading;
+    heading.dataset.editable = `${el.dataset.cms} heading`;
+    content.adopt(el);
+  }
+  el.hidden = false;
+}
+
+// What an editor typed into a box: an empty line starts a new paragraph, and a line break stays a line break.
+// `rich` reads links, bold and italics the way an essay does; otherwise every character is shown as typed.
+const paragraphs = (text, rich, attrs = '') => String(text || '').replace(/\r\n?/g, '\n').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
+  .map((p) => `<p${attrs}>${p.split('\n').map((line) => (rich ? inline(line.trim()) : esc(line.trim()))).join('<br>')}</p>`).join('\n    ');
+
+function quoteCard(q) {
+  const name = said(q.name);
+  const about = said(q.about);
+  return `<figure class="said-item" data-no-edit${AS_WRITTEN}>
+  <blockquote>
+    ${paragraphs(q.quote, false)}
+  </blockquote>
+  ${name || about ? `<figcaption>${name ? `<b>${esc(name)}</b>` : ''}${about ? `<span>${esc(about)}</span>` : ''}</figcaption>` : ''}
+</figure>`;
+}
+
+async function testimonials(el) {
+  const slot = el.querySelector('[data-testimonials-list]');
+  try {
+    const found = (await list('testimonials')).filter((q) => typeof q.quote === 'string' && q.quote.trim()).sort(inOrder);
+    if (!slot || !found.length) return;
+    slot.innerHTML = found.map(quoteCard).join('\n');
+    showSection(el);
+  } catch (err) {
+    console.warn('[cms] testimonials unavailable:', err.message);
+  }
+}
+
+// A portrait is a photo kept in the site's database (see "photos" in shared/content.js). Until it has been
+// read, its frame is empty; a person with no photo, or whose photo can't be read, is shown by their initials.
+const NO_PICTURE = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+const initials = (name) => {
+  const parts = name.split(/\s+/).map((w) => [...w].find((c) => /\p{L}/u.test(c)) || '').filter(Boolean);
+  return (parts.length > 1 ? parts[0] + parts[parts.length - 1] : parts[0] || '').toUpperCase();
+};
+const noPortrait = (name) => `<div class="portrait blank" aria-hidden="true"><span>${esc(initials(name))}</span></div>`;
+
+function memberCard(p, i, taken) {
+  const name = said(p.name);
+  const role = said(p.role);
+  // An address of its own on the page ("/board/#jane-doe"), unless something there has that name already.
+  let id = name.toLowerCase().normalize('NFKD').replace(/\p{M}+/gu, '').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '');
+  if (!id || taken.has(id) || document.getElementById(id)) id = `staff-${i + 1}`;
+  taken.add(id);
+  const photo = content.hasPhoto(p.photo)
+    ? `<div class="portrait"><img src="${NO_PICTURE}" alt="${esc(name)}" data-staff-photo="${i}"${content.isGray(p.photo) ? ' style="filter:grayscale(1)"' : ''}></div>`
+    : noPortrait(name);
+  return `<article class="member${role ? '' : ' no-role'}" id="${esc(id)}" data-no-edit>
+  ${photo}
+  <div>
+    ${role ? `<p class="kicker"${AS_WRITTEN}>${esc(role)}</p>` : ''}
+    <h3${AS_WRITTEN}>${esc(name)}</h3>
+    ${paragraphs(p.bio, true, AS_WRITTEN)}
+  </div>
+</article>`;
+}
+
+async function staff(el) {
+  const slot = el.querySelector('[data-staff-list]');
+  try {
+    const found = (await list('staff')).filter((p) => said(p.name)).sort(inOrder);
+    if (!slot || !found.length) return;
+    const taken = new Set();
+    slot.innerHTML = found.map((p, i) => memberCard(p, i, taken)).join('\n');
+    showSection(el);
+    found.forEach((p, i) => {
+      const img = slot.querySelector(`[data-staff-photo="${i}"]`);
+      if (!img) return;
+      content.photoUrl(p.photo, content.STAFF_KEPT)
+        .then((url) => { img.src = url; })
+        .catch((err) => {
+          console.warn('[cms] a portrait was not loaded:', err.message);
+          img.parentElement.outerHTML = noPortrait(said(p.name));
+        });
+    });
+    content.tidyPhotos(found.map((p) => p.photo), content.STAFF_KEPT);
+  } catch (err) {
+    console.warn('[cms] staff unavailable:', err.message);
+  }
+}
+
+const mounts = { 'blog-list': blogList, 'blog-post': blogPost, events, testimonials, staff };
 // Once the visitor's language has been read (at once, in English), so that what is written here is written in it.
 wordsReady.then(() => document.querySelectorAll('[data-cms]').forEach((el) => mounts[el.dataset.cms]?.(el)));

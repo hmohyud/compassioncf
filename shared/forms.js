@@ -12,9 +12,9 @@
 // shared/contact.js.)
 //
 // The name and the town or country are newer than the list itself. If a database's rules only accept
-// the three fields the list has always had, the address is still saved the old way, and the name and
-// place are sent to the editor's Inbox (contactSubmissions) as a note with the subject "Mailing list
-// sign-up". Either way the sign-up is kept and nothing the person typed is lost.
+// the three fields the list has always had, the address is still saved the old way, so the sign-up is
+// kept. (Until 22 November 2026 the name and place were then sent to the editor's Inbox as a note; the
+// editor no longer has an Inbox, and the site's own database accepts them with the address.)
 //
 // No API key is sent; whether a write is accepted is decided by the database's own rules.
 
@@ -27,8 +27,8 @@
 // earlier one keeps receiving entries. If HOME fails, the visitor is asked to try again, and a
 // copy may then arrive twice.)
 //
-// Since 17 November 2026 HOME is the site's own project, which the editor's Inbox and Mailing list
-// read. Until 19 November 2026 a copy also went to the foundation's earlier project; nothing there
+// Since 17 November 2026 HOME is the site's own project, which the editor's Mailing list reads.
+// Until 19 November 2026 a copy also went to the foundation's earlier project; nothing there
 // used it, so ALSO is empty now and a submission goes to one place only.
 import { t } from './i18n.js';   // replies in the visitor's language
 
@@ -37,7 +37,6 @@ const HOME = database('compassioncf-editor');
 const ALSO = [];
 
 const LIMITS = { name: 120, email: 200, location: 120 };
-const MAILING_LIST = 'Mailing list sign-up';   // shared/admin/app.js labels these notes in the inbox
 
 const COPY = {
   newsletter: () => t('Thank you. You’re on the list.'),
@@ -84,11 +83,9 @@ const WRITE = {
       await create(to, 'newsletterSubscriptions', { ...entry, ...details }, background);
     } catch (err) {
       if (err.status !== 403) throw err;
-      // Refused by that database's rules: save the address the way the list always has, and send the rest to the inbox.
+      // Refused by that database's rules: save the address the way the list always has.
       await create(to, 'newsletterSubscriptions', entry, background);
-      const note = [details.name ? `Name: ${details.name}` : '', details.location ? `Town / country: ${details.location}` : ''].filter(Boolean).join('\n');
-      await create(to, 'contactSubmissions', { name: details.name || 'Mailing list', email: entry.email, subject: MAILING_LIST, message: note, submittedAt: entry.subscribedAt }, background)
-        .catch((e) => console.warn('[forms] mailing-list details not saved:', e.message));
+      console.warn('[forms] the mailing-list sign-up was saved without the name and place: the database refused them');
     }
   },
 };

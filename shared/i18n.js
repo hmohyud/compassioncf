@@ -184,11 +184,12 @@ export function t(english, values) {
 
 /* ---------- words outside the pages' own text ---------- */
 
-// Left as they are: names, what the foundation writes in the editor (essays, events), what a script keeps
-// changing, and the editor itself.
+// Left as they are: names, what the foundation writes in the editor (essays, events, testimonials, staff
+// members), what a script keeps changing, and the editor itself.
 const LEAVE = [
   'script', 'style', 'noscript', 'svg', 'canvas', '.brand', '.g-wrap', '[data-no-translate]', '[data-admin-app]',
   '[data-posts]', '[data-post-title]', '[data-post-sub]', '[data-post-by]', '[data-post-body]', '[data-events-list] > [data-no-edit]',
+  '[data-testimonials-list]', '[data-staff-list]',
   '[data-count]', '[data-year]', '.edbar', '.ed-pop', '.ed-photo', '.ed-photo-tag', '[contenteditable="true"]',
 ].join(',');
 const ATTRIBUTES = ['aria-label', 'title', 'alt', 'placeholder', 'data-say'];
